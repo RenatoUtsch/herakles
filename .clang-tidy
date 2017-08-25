@@ -1,0 +1,19 @@
+---
+Checks:          'cert-*,clang-diagnostic-*,clang-analyzer-*,cppcoreguidelines-*,google-*,misc-*,modernize-*,performance-*,readability-*,-misc-definitions-in-headers,-readability-avoid-const-params-in-decls'
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+AnalyzeTemporaryDtors: false
+User:            renato
+CheckOptions:    
+  - key:             google-readability-namespace-comments.SpacesBeforeComments
+    value:           '2'
+  - key:             modernize-loop-convert.MaxCopySize
+    value:           '16'
+  - key:             modernize-loop-convert.NamingStyle
+    value:           CamelCase
+  - key:             modernize-pass-by-value.IncludeStyle
+    value:           google
+  - key:             modernize-replace-auto-ptr.IncludeStyle
+    value:           google
+...
+

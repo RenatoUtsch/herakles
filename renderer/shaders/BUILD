@@ -22,6 +22,7 @@ glsl_binary(
     deps = [
         "//herakles/shaders:path_tracer",
         "//herakles/shaders:random",
+        "//herakles/shaders:scene",
     ],
 )
 

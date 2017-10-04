@@ -28,3 +28,8 @@ glsl_library(
     name = "random",
     srcs = ["random.glsl"],
 )
+
+glsl_library(
+    name = "scene",
+    srcs = ["scene.glsl"],
+)

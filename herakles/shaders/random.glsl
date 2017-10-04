@@ -84,6 +84,22 @@ uint urand() {
 }
 
 /**
+ * Generates a random unsigned integer in the range [0, end).
+ * Ensure randInit() is called before calling this function.
+ */
+uint urand(uint end) {
+  return urand() % end;
+}
+
+/**
+ * Generates a random unsigned integer in the range [begin, end).
+ * Ensure randInit() is called before calling this function.
+ */
+uint urand(uint begin, uint end) {
+  return urand() % (end - begin) + begin;
+}
+
+/**
  * Generates a random floating point number in the range [0, 1].
  * Ensure randInit() is called before calling this function.
  */

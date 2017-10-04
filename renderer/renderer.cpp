@@ -60,6 +60,8 @@ DEFINE_int32(width, 800, "Width resolution of the surface.");
 DEFINE_int32(height, 600, "Height resolution of the surface.");
 DEFINE_bool(enable_validation_layers, false,
             "If is to enable validation layers when running the program.");
+DEFINE_bool(unlock_camera, false,
+            "If is to unlock the camera and allow movement.");
 
 namespace {
 const char *RendererName = "Herakles Renderer";
@@ -113,7 +115,7 @@ class Renderer {
   }
 
   void updateCamera_() {
-    if (cameraManager_.update(ubo_.camera, deltaTime_)) {
+    if (FLAGS_unlock_camera && cameraManager_.update(ubo_.camera, deltaTime_)) {
       ubo_.frameCount = 0;  // Camera changed, reset frame count.
     }
   }

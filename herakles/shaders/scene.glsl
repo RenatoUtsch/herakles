@@ -46,6 +46,8 @@ struct PinholeCamera {
 
 /**
  * Represents a single area light.
+ * The first area light represents no light, and is always skipped. It must
+ * always have emission of vec3(0, 0, 0).
  */
 struct AreaLight {
   vec3 emission;
@@ -65,6 +67,11 @@ struct Mesh {
   /// Index of the material of this mesh.
   uint materialID;
 
+  /// Index of the area light of this mesh. If 0, the mesh doesn't emit light,
+  /// but the area light 0 emission is always 0, so you don't have to make a
+  /// special case.
+  uint areaLightID;
+
   //uint transformID;
 };
 
@@ -74,6 +81,24 @@ struct Mesh {
 struct Material {
   /// Reflectivity of the diffuse surface.
   vec3 kd;
+};
+
+/**
+ * Represents an interaction with a triangle point.
+ */
+struct Interaction {
+  /// Interaction point.
+  vec3 point;
+
+  /// Mesh ID.
+  uint meshID;
+
+  /// Oriented intersection normal.
+  vec3 normal;
+
+  /// If the intersection came from the backface. If this is true, the normal
+  /// has already been inversed automatically.
+  bool backface;
 };
 
 layout(binding = 0, rgba32f) uniform restrict image2D Image;
@@ -111,42 +136,32 @@ layout(binding = 2, std140) uniform restrict readonly UBO {
 /*   mat4 Transforms[]; */
 /* }; */
 
-/* Integrator "path" "integer maxdepth" [ 65 ] */
-/* Transform [ 1 -0 -0 -0 -0 1 -0 -0 -0 -0 -1 -0 -0 -1 6.8 1] */
-/* Sampler "sobol" "integer pixelsamples" [ 64 ] */
-/* PixelFilter "triangle" "float xwidth" [ 1.000000 ] "float ywidth" [ 1.000000 ] */
-/* Film "image" "integer xresolution" [ 1024 ] "integer yresolution" [ 1024 ] "string filename" [ "cornell-box.png" ] */
-/* Camera "perspective" "float fov" [ 19.500000 ] */
-
-const uint NUM_AREA_LIGHTS = 1;
-const uint NUM_MATERIALS = 8;
+const uint NUM_AREA_LIGHTS = 2;
+const uint NUM_MATERIALS = 4;
 const uint NUM_MESHES = 8;
 const uint NUM_INDICES = 108;
-const uint NUM_POINTS = 72;
+const uint NUM_VERTICES = 72;
 
 const AreaLight AreaLights[NUM_AREA_LIGHTS] = AreaLight[](
+  AreaLight(vec3(0, 0, 0), 0),
   AreaLight(vec3(17, 12, 4), 7)
 );
 
 const Mesh Meshes[NUM_MESHES] = Mesh[](
-  Mesh(0, 6, 0),
-  Mesh(6, 12, 1),
-  Mesh(12, 18, 2),
-  Mesh(18, 24, 3),
-  Mesh(24, 30, 4),
-  Mesh(30, 36, 5),
-  Mesh(66, 72, 6),
-  Mesh(102, 108, 7)
+  Mesh(0, 6, 0, 0),
+  Mesh(6, 12, 0, 0),
+  Mesh(12, 18, 0, 0),
+  Mesh(18, 24, 2, 0),
+  Mesh(24, 30, 1, 0),
+  Mesh(30, 66, 0, 0),
+  Mesh(66, 102, 0, 0),
+  Mesh(102, 108, 3, 1)
 );
 
 const Material Materials[NUM_MATERIALS] = Material[](
+  Material(vec3(0.725000, 0.710000, 0.680000)),
   Material(vec3(0.630000, 0.065000, 0.050000)),
   Material(vec3(0.140000, 0.450000, 0.091000)),
-  Material(vec3(0.725000, 0.710000, 0.680000)),
-  Material(vec3(0.725000, 0.710000, 0.680000)),
-  Material(vec3(0.725000, 0.710000, 0.680000)),
-  Material(vec3(0.725000, 0.710000, 0.680000)),
-  Material(vec3(0.725000, 0.710000, 0.680000)),
   Material(vec3(0.000000, 0.000000, 0.000000))
 );
 
@@ -197,12 +212,12 @@ const uint Indices[NUM_INDICES] = uint[](
   68, 70, 71
 );
 
-const vec3 Points[NUM_POINTS] = vec3[](
+const vec3 Vertices[NUM_VERTICES] = vec3[](
   // Floor
-  vec3(-1, 1.74846e-007, -1),
-  vec3(-1, 1.74846e-007, 1),
-  vec3(1, -1.74846e-007, 1),
-  vec3(1, -1.74846e-007, -1),
+  vec3(-1, 0, -1),
+  vec3(-1, 0, 1),
+  vec3(1, 0, 1),
+  vec3(1, 0, -1),
   // Ceiling
   vec3(1, 2, 1),
   vec3(-1, 2, 1),
@@ -280,90 +295,90 @@ const vec3 Points[NUM_POINTS] = vec3[](
   vec3(-0.24, 1.98, 0.16)
 );
 
-const vec3 Normals[NUM_POINTS] = vec3[](
+const vec3 Normals[NUM_VERTICES] = vec3[](
   // Floor
-  vec3(4.37114e-008, 1, 1.91069e-015),
-  vec3(4.37114e-008, 1, 1.91069e-015),
-  vec3(4.37114e-008, 1, 1.91069e-015),
-  vec3(4.37114e-008, 1, 1.91069e-015),
+  vec3(0, 1, 0),
+  vec3(0, 1, 0),
+  vec3(0, 1, 0),
+  vec3(0, 1, 0),
   // Ceiling
-  vec3(-8.74228e-008, -1, -4.37114e-008),
-  vec3(-8.74228e-008, -1, -4.37114e-008),
-  vec3(-8.74228e-008, -1, -4.37114e-008),
-  vec3(-8.74228e-008, -1, -4.37114e-008),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
   // BackWall
-  vec3(8.74228e-008, -4.37114e-008, -1),
-  vec3(8.74228e-008, -4.37114e-008, -1),
-  vec3(8.74228e-008, -4.37114e-008, -1),
-  vec3(8.74228e-008, -4.37114e-008, -1),
+  vec3(0, 0, -1),
+  vec3(0, 0, -1),
+  vec3(0, 0, -1),
+  vec3(0, 0, -1),
   // RightWall
-  vec3(1, -4.37114e-008, 1.31134e-007),
-  vec3(1, -4.37114e-008, 1.31134e-007),
-  vec3(1, -4.37114e-008, 1.31134e-007),
-  vec3(1, -4.37114e-008, 1.31134e-007),
+  vec3(1, 0, 0),
+  vec3(1, 0, 0),
+  vec3(1, 0, 0),
+  vec3(1, 0, 0),
   // LeftWall
-  vec3(-1, -4.37114e-008, -4.37114e-008),
-  vec3(-1, -4.37114e-008, -4.37114e-008),
-  vec3(-1, -4.37114e-008, -4.37114e-008),
-  vec3(-1, -4.37114e-008, -4.37114e-008),
+  vec3(-1, 0, 0),
+  vec3(-1, 0, 0),
+  vec3(-1, 0, 0),
+  vec3(-1, 0, 0),
   // ShortBox
-  vec3(-0.958123, -4.18809e-008, -0.286357),
-  vec3(-0.958123, -4.18809e-008, -0.286357),
-  vec3(-0.958123, -4.18809e-008, -0.286357),
-  vec3(-0.958123, -4.18809e-008, -0.286357),
-  vec3(0.958123, 4.18809e-008, 0.286357),
-  vec3(0.958123, 4.18809e-008, 0.286357),
-  vec3(0.958123, 4.18809e-008, 0.286357),
-  vec3(0.958123, 4.18809e-008, 0.286357),
-  vec3(-4.37114e-008, 1, -1.91069e-015),
-  vec3(-4.37114e-008, 1, -1.91069e-015),
-  vec3(-4.37114e-008, 1, -1.91069e-015),
-  vec3(-4.37114e-008, 1, -1.91069e-015),
-  vec3(4.37114e-008, -1, 1.91069e-015),
-  vec3(4.37114e-008, -1, 1.91069e-015),
-  vec3(4.37114e-008, -1, 1.91069e-015),
-  vec3(4.37114e-008, -1, 1.91069e-015),
-  vec3(-0.286357, -1.25171e-008, 0.958123),
-  vec3(-0.286357, -1.25171e-008, 0.958123),
-  vec3(-0.286357, -1.25171e-008, 0.958123),
-  vec3(-0.286357, -1.25171e-008, 0.958123),
-  vec3(0.286357, 1.25171e-008, -0.958123),
-  vec3(0.286357, 1.25171e-008, -0.958123),
-  vec3(0.286357, 1.25171e-008, -0.958123),
-  vec3(0.286357, 1.25171e-008, -0.958123),
+  vec3(-0.958123, 0, -0.286357),
+  vec3(-0.958123, 0, -0.286357),
+  vec3(-0.958123, 0, -0.286357),
+  vec3(-0.958123, 0, -0.286357),
+  vec3(0.958123, 0, 0.286357),
+  vec3(0.958123, 0, 0.286357),
+  vec3(0.958123, 0, 0.286357),
+  vec3(0.958123, 0, 0.286357),
+  vec3(0, 1, 0),
+  vec3(0, 1, 0),
+  vec3(0, 1, 0),
+  vec3(0, 1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(-0.286357, 0, 0.958123),
+  vec3(-0.286357, 0, 0.958123),
+  vec3(-0.286357, 0, 0.958123),
+  vec3(-0.286357, 0, 0.958123),
+  vec3(0.286357, 0, -0.958123),
+  vec3(0.286357, 0, -0.958123),
+  vec3(0.286357, 0, -0.958123),
+  vec3(0.286357, 0, -0.958123),
   // TallBox
-  vec3(-0.328669, -4.1283e-008, -0.944445),
-  vec3(-0.328669, -4.1283e-008, -0.944445),
-  vec3(-0.328669, -4.1283e-008, -0.944445),
-  vec3(-0.328669, -4.1283e-008, -0.944445),
-  vec3(0.328669, 4.1283e-008, 0.944445),
-  vec3(0.328669, 4.1283e-008, 0.944445),
-  vec3(0.328669, 4.1283e-008, 0.944445),
-  vec3(0.328669, 4.1283e-008, 0.944445),
-  vec3(3.82137e-015, 1, -4.37114e-008),
-  vec3(3.82137e-015, 1, -4.37114e-008),
-  vec3(3.82137e-015, 1, -4.37114e-008),
-  vec3(3.82137e-015, 1, -4.37114e-008),
-  vec3(-3.82137e-015, -1, 4.37114e-008),
-  vec3(-3.82137e-015, -1, 4.37114e-008),
-  vec3(-3.82137e-015, -1, 4.37114e-008),
-  vec3(-3.82137e-015, -1, 4.37114e-008),
-  vec3(-0.944445, 1.43666e-008, 0.328669),
-  vec3(-0.944445, 1.43666e-008, 0.328669),
-  vec3(-0.944445, 1.43666e-008, 0.328669),
-  vec3(-0.944445, 1.43666e-008, 0.328669),
-  vec3(0.944445, -1.43666e-008, -0.328669),
-  vec3(0.944445, -1.43666e-008, -0.328669),
-  vec3(0.944445, -1.43666e-008, -0.328669),
-  vec3(0.944445, -1.43666e-008, -0.328669),
+  vec3(-0.328669, 0, -0.944445),
+  vec3(-0.328669, 0, -0.944445),
+  vec3(-0.328669, 0, -0.944445),
+  vec3(-0.328669, 0, -0.944445),
+  vec3(0.328669, 0, 0.944445),
+  vec3(0.328669, 0, 0.944445),
+  vec3(0.328669, 0, 0.944445),
+  vec3(0.328669, 0, 0.944445),
+  vec3(0, 1, 0),
+  vec3(0, 1, 0),
+  vec3(0, 1, 0),
+  vec3(0, 1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(-0.944445, 0, 0.328669),
+  vec3(-0.944445, 0, 0.328669),
+  vec3(-0.944445, 0, 0.328669),
+  vec3(-0.944445, 0, 0.328669),
+  vec3(0.944445, 0, -0.328669),
+  vec3(0.944445, 0, -0.328669),
+  vec3(0.944445, 0, -0.328669),
+  vec3(0.944445, 0, -0.328669),
   // Light
-  vec3(-8.74228e-008, -1, 1.86006e-007),
-  vec3(-8.74228e-008, -1, 1.86006e-007),
-  vec3(-8.74228e-008, -1, 1.86006e-007),
-  vec3(-8.74228e-008, -1, 1.86006e-007)
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0),
+  vec3(0, -1, 0)
 );
 
-const vec2 UVs[NUM_POINTS] = vec2[](
+const vec2 UVs[NUM_VERTICES] = vec2[](
   // Floor
   vec2(0, 0),
   vec2(1, 0),

@@ -32,13 +32,16 @@ namespace hk {
  */
 struct Camera {
   /// Position of the camera.
-  glm::vec3 position = {50, 52, 165.927};
+  // glm::vec3 position = {50, 52, 165.927};
+  glm::vec3 position = {0, 1, 2.615};
 
   /// Field of view.
-  float fov = 1.25f;
+  float fov = 1.24f;
+  // float fov = 0.34f;
 
   /// Direction of the camera.
   alignas(16) glm::vec3 direction = {0, 0, -1};
+  // alignas(16) glm::vec3 direction = {0, 0, 1};
 
   /// Up vector of the camera.
   alignas(16) glm::vec3 up = {0, 1, 0};
@@ -63,7 +66,7 @@ class CameraManager {
    * @param horizontalAngle Initial horizontal angle, in radians.
    * @param verticalAngle Initial vertical angle, in radians.
    */
-  CameraManager(const Surface &surface, float moveSpeed = 100.0f,
+  CameraManager(const Surface &surface, float moveSpeed = 1.0f,
                 float mouseSpeed = 0.05f,
                 float horizontalAngle = glm::pi<float>(),
                 float verticalAngle = 0.0f);

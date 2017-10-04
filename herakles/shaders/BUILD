@@ -17,6 +17,14 @@ load("@com_github_renatoutsch_rules_spirv//glsl:defs.bzl", "glsl_library")
 package(default_visibility = ["//visibility:public"])
 
 glsl_library(
+    name = "path_tracer",
+    srcs = ["path_tracer.glsl"],
+    deps = [
+        ":random",
+    ],
+)
+
+glsl_library(
     name = "random",
     srcs = ["random.glsl"],
 )

@@ -21,6 +21,6 @@ cc_library(
     hdrs = ["vulkan/vulkan.hpp"],
     includes = ["."],
     deps = [
-        "@vulkan_docs//:vulkan",
+        "@com_github_khronosgroup_vulkan_docs//:vulkan",
     ],
 )

@@ -1,0 +1,86 @@
+// Herakles renderer binary scene format.
+//
+// This format is described in such a way that a scene file can be memory mapped
+// and easily transferred to the GPU memory and used as GLSL structures.
+//
+// A file in this format *can* be written by hand using the FlatBuffer JSON
+// representation, but as it was designed with performance in mind, it will
+// likely not be easy to do. Instead, a better idea is to write a scene in
+// another format (like the PBRT format subset) and use a converter.
+
+namespace herakles.scene;
+file_identifier "HKS1";
+file_extension "hks";
+
+/// Represents a vec2 in GLSL.
+struct vec2 {
+  x: float;
+  y: float;
+}
+
+/// Represents a vec3 in GLSL.
+struct vec3 {
+  x: float;
+  y: float;
+  z: float;
+}
+
+/// Represents a vec4 in GLSL.
+struct vec4 {
+  x: float;
+  y: float;
+  z: float;
+}
+
+/// Represents a mat4x4 in GLSL.
+struct mat4 {
+  a: vec4;
+  b: vec4;
+  c: vec4;
+  d: vec4;
+}
+
+struct Mesh {
+  /// First triangle vertex index from the Scene indices array.
+  beginIndex: uint;
+
+  /// One-past-last triangle vertex index from the Scene indices array.
+  endIndex: uint;
+
+  /// ID of the material used in the mesh, from the Scene materials array.
+  materialID: uint;
+
+  /// ID of the transformation used in the mesh, from the Scene transforms
+  /// array.
+  transformID: uint;
+}
+
+table Scene {
+  /// Triangle meshes, each mesh combines triangle indices, materials and
+  /// transformations from this Scene table.
+  meshes: [Mesh];
+
+  /// Indices of the triangle vertices. Each different mesh will have a number
+  /// of indices in this array.
+  indices: [uint];
+
+  /// Triangle vertices.
+  vertices: [vec3];
+
+  /// Per-vertex triangle normals. If present, shading normals will be computed
+  /// by interpolating these normals.
+  normals: [vec3];
+
+  /// Per-vertex texture coordinates. If the mesh is textured, this array must
+  /// be present.
+  uv: [vec2];
+
+  /// Different materials present in the scene.
+  materials: [Material];
+
+  /// Different textures present in the scene.
+  textures: [Texture];
+
+  /// Transformations applied to the meshes before they're used.
+  transforms: [mat4];
+}

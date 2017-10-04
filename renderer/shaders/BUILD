@@ -17,6 +17,15 @@ load("@com_github_renatoutsch_rules_spirv//glsl:defs.bzl", "glsl_binary")
 package(default_visibility = ["//visibility:public"])
 
 glsl_binary(
+    name = "main",
+    srcs = ["main.comp"],
+    deps = [
+        "//herakles/shaders:path_tracer",
+        "//herakles/shaders:random",
+    ],
+)
+
+glsl_binary(
     name = "smallpt",
     srcs = ["smallpt.comp"],
     deps = [

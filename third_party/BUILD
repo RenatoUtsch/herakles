@@ -14,12 +14,42 @@
 
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # public domain
+alias(
+    name = "gflags",
+    actual = "@com_github_gflags_gflags//:gflags",
+)
 
-cc_library(
-    name = "stb_image",
-    srcs = ["stb_image.cpp"],
-    deps = [
-        "@com_github_nothings_stb//:stb_image",
-    ],
+alias(
+    name = "glfw",
+    actual = "@glfw",
+)
+
+alias(
+    name = "glm",
+    actual = "@com_github_gtruc_glm//:glm",
+)
+
+alias(
+    name = "glog",
+    actual = "@com_google_glog//:glog",
+)
+
+alias(
+    name = "gmock",
+    actual = "@com_google_googletest//:gmock",
+)
+
+alias(
+    name = "gtest",
+    actual = "@com_google_googletest//:gtest",
+)
+
+alias(
+    name = "vulkan",
+    actual = "@com_github_khronosgroup_vulkan_docs//:vulkan",
+)
+
+alias(
+    name = "vulkan_hpp",
+    actual = "@com_github_khronosgroup_vulkan_hpp//:vulkan_hpp",
 )

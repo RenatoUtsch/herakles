@@ -270,12 +270,13 @@ class Renderer {
         vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferSrc,
         swapchain_.surfaceFormat().format);
 
-    device_.submitOneTimeComputeCommands([&image](
-        const vk::CommandBuffer &commandBuffer) {
-      image.layoutTransitionBarrier(commandBuffer, vk::ImageLayout::eUndefined,
-                                    vk::ImageLayout::eTransferSrcOptimal, {},
-                                    vk::AccessFlagBits::eTransferRead);
-    });
+    device_.submitOneTimeComputeCommands(
+        [&image](const vk::CommandBuffer &commandBuffer) {
+          image.layoutTransitionBarrier(commandBuffer,
+                                        vk::ImageLayout::eUndefined,
+                                        vk::ImageLayout::eTransferSrcOptimal,
+                                        {}, vk::AccessFlagBits::eTransferRead);
+        });
     device_.vkComputeQueue().waitIdle();
 
     return image;

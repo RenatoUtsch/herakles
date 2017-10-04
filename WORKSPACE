@@ -53,19 +53,3 @@ local_cc_library(
         "default": ["libvulkan.so"],
     },
 )
-
-# TODO(renatoutsch): Replace this with proper vendoring.
-local_cc_library(
-    name = "glog",
-    hdrs = [
-        "glog/log_severity.h",
-        "glog/logging.h",
-        "glog/raw_logging.h",
-        "glog/stl_logging.h",
-        "glog/vlog_is_on.h",
-    ],
-    libs = {
-        "windows": ["glog.dll"],
-        "default": ["libglog.so"],
-    },
-)

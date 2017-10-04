@@ -23,6 +23,7 @@ cc_binary(
     ],
     copts = HERAKLES_CPP_COPTS,
     data = [
+        "//renderer/shaders:main",
         "//renderer/shaders:red",
         "//renderer/shaders:smallpt",
     ],
@@ -42,9 +43,9 @@ cc_binary(
         "//herakles/vulkan:surface",
         "//herakles/vulkan:surface_provider",
         "//herakles/vulkan:swapchain",
-        "@com_github_gflags_gflags//:gflags",
-        "@glm",
-        "@glog",
-        "@vulkan_hpp",
+        "//third_party:gflags",
+        "//third_party:glm",
+        "//third_party:glog",
+        "//third_party:vulkan_hpp",
     ],
 )

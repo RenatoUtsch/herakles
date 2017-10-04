@@ -25,8 +25,8 @@ cc_library(
         ":surface_provider",
         ":utils",
         "//herakles/vulkan/internal:ext_loader",
-        "@glog",
-        "@vulkan_hpp",
+        "//third_party:glog",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -36,10 +36,10 @@ cc_library(
     hdrs = ["surface_provider.hpp"],
     copts = HERAKLES_CPP_COPTS,
     deps = [
-        "@glfw",
-        "@glog",
-        "@vulkan_docs//:vulkan",
-        "@vulkan_hpp",
+        "//third_party:glfw",
+        "//third_party:glog",
+        "//third_party:vulkan",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -51,10 +51,10 @@ cc_library(
     deps = [
         ":instance",
         ":surface_provider",
-        "@glfw",
-        "@glog",
-        "@vulkan_docs//:vulkan",
-        "@vulkan_hpp",
+        "//third_party:glfw",
+        "//third_party:glog",
+        "//third_party:vulkan",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -67,7 +67,7 @@ cc_library(
         ":instance",
         ":surface",
         ":surface_provider",
-        "@vulkan_hpp",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -80,7 +80,7 @@ cc_library(
         ":instance",
         ":physical_device",
         ":utils",
-        "@vulkan_hpp",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -93,8 +93,8 @@ cc_library(
         ":device",
         ":image",
         ":surface",
-        "@glog",
-        "@vulkan_hpp",
+        "//third_party:glog",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -105,7 +105,7 @@ cc_library(
     copts = HERAKLES_CPP_COPTS,
     deps = [
         ":device",
-        "@vulkan_hpp",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -118,8 +118,8 @@ cc_library(
         ":descriptor_set_layout",
         ":device",
         ":shader",
-        "@glog",
-        "@vulkan_hpp",
+        "//third_party:glog",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -130,7 +130,7 @@ cc_library(
     copts = HERAKLES_CPP_COPTS,
     deps = [
         ":device",
-        "@vulkan_hpp",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -141,7 +141,7 @@ cc_library(
     copts = HERAKLES_CPP_COPTS,
     deps = [
         ":descriptor_set_layout",
-        "@vulkan_hpp",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -154,8 +154,8 @@ cc_library(
         ":descriptor_pool",
         ":descriptor_set_layout",
         ":device",
-        "@glog",
-        "@vulkan_hpp",
+        "//third_party:glog",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -169,8 +169,8 @@ cc_library(
         ":device",
         ":image",
         ":physical_device",
-        "@glog",
-        "@vulkan_hpp",
+        "//third_party:glog",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -182,7 +182,7 @@ cc_library(
     deps = [
         ":device",
         ":image",
-        "@vulkan_hpp",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -193,7 +193,7 @@ cc_library(
     copts = HERAKLES_CPP_COPTS,
     deps = [
         ":device",
-        "@vulkan_hpp",
+        "//third_party:vulkan_hpp",
     ],
 )
 
@@ -204,7 +204,7 @@ cc_library(
     copts = HERAKLES_CPP_COPTS,
     deps = [
         ":surface",
-        "@glm",
+        "//third_party:glm",
     ],
 )
 
@@ -214,7 +214,7 @@ cc_library(
     hdrs = ["utils.hpp"],
     copts = HERAKLES_CPP_COPTS,
     deps = [
-        "@glog",
+        "//third_party:glog",
     ],
 )
 
@@ -224,6 +224,6 @@ cc_test(
     copts = HERAKLES_CPP_COPTS,
     deps = [
         ":utils",
-        "@googletest//:gtest",
+        "//third_party:gtest",
     ],
 )

@@ -22,6 +22,6 @@ cc_library(
     hdrs = ["ext_loader.h"],
     copts = HERAKLES_C_COPTS,
     deps = [
-        "@vulkan_docs//:vulkan",
+        "//third_party:vulkan",
     ],
 )

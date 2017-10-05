@@ -17,16 +17,38 @@ load("@com_github_renatoutsch_rules_spirv//glsl:defs.bzl", "glsl_library")
 package(default_visibility = ["//visibility:public"])
 
 glsl_library(
+    name = "intersection",
+    srcs = ["intersection.glsl"],
+    deps = [
+        ":random",
+        ":scene",
+    ],
+)
+
+glsl_library(
     name = "path_tracer",
     srcs = ["path_tracer.glsl"],
     deps = [
+        ":intersection",
         ":random",
+        ":sampling",
+        ":scene",
     ],
 )
 
 glsl_library(
     name = "random",
     srcs = ["random.glsl"],
+)
+
+glsl_library(
+    name = "sampling",
+    srcs = ["sampling.glsl"],
+    deps = [
+        ":intersection",
+        ":random",
+        ":scene",
+    ],
 )
 
 glsl_library(

@@ -25,6 +25,15 @@
 #ifndef HERAKLES_SHADERS_SCENE_GLSL
 #define HERAKLES_SHADERS_SCENE_GLSL
 
+// (u, v) = (s, t) for coordinates in Herakles.
+
+const uint NUM_SAMPLES = 10;
+const uint MAX_DEPTH = 4;
+
+const float EPSILON = 1e-7;
+const float INF = 1e20;
+const float M_PI = 3.14159265359f;
+
 /**
  * Represents a ray travelling through the scene.
  */
@@ -148,21 +157,21 @@ const AreaLight AreaLights[NUM_AREA_LIGHTS] = AreaLight[](
 );
 
 const Mesh Meshes[NUM_MESHES] = Mesh[](
-  Mesh(0, 6, 0, 0),
-  Mesh(6, 12, 0, 0),
-  Mesh(12, 18, 0, 0),
-  Mesh(18, 24, 2, 0),
-  Mesh(24, 30, 1, 0),
-  Mesh(30, 66, 0, 0),
-  Mesh(66, 102, 0, 0),
-  Mesh(102, 108, 3, 1)
+  Mesh(0, 6, 1, 0),
+  Mesh(6, 12, 1, 0),
+  Mesh(12, 18, 1, 0),
+  Mesh(18, 24, 3, 0),
+  Mesh(24, 30, 2, 0),
+  Mesh(30, 66, 1, 0),
+  Mesh(66, 102, 1, 0),
+  Mesh(102, 108, 0, 1)
 );
 
 const Material Materials[NUM_MATERIALS] = Material[](
+  Material(vec3(0.000000, 0.000000, 0.000000)),
   Material(vec3(0.725000, 0.710000, 0.680000)),
   Material(vec3(0.630000, 0.065000, 0.050000)),
-  Material(vec3(0.140000, 0.450000, 0.091000)),
-  Material(vec3(0.000000, 0.000000, 0.000000))
+  Material(vec3(0.140000, 0.450000, 0.091000))
 );
 
 const uint Indices[NUM_INDICES] = uint[](

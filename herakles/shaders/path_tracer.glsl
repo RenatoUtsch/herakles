@@ -39,8 +39,8 @@ vec3 radiance(Ray ray) {
     // Direct light sampling in the first iteration.
     // Surfaces only emit light if they're being looked at from the front.
     if (depth == 0 && !isect.backface) {
-      const uint areaLightID = Meshes[isect.meshID].areaLightID;
-      if (areaLightID != 0) { // Otherwise it doesn't emit.
+      const int areaLightID = Meshes[isect.meshID].areaLightID;
+      if (areaLightID >= 0) { // Otherwise it doesn't emit.
         color += beta * AreaLights[areaLightID].emission;
         break;
       }

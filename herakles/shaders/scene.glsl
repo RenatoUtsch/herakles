@@ -79,7 +79,7 @@ struct Mesh {
   /// Index of the area light of this mesh. If 0, the mesh doesn't emit light,
   /// but the area light 0 emission is always 0, so you don't have to make a
   /// special case.
-  uint areaLightID;
+  int areaLightID;
 
   //uint transformID;
 };
@@ -117,54 +117,57 @@ layout(binding = 2, std140) uniform restrict readonly UBO {
   uint FrameCount;
 };
 
-/* layout(std430, binding = 3) buffer MeshesBuffer { */
+/* layout(std430, binding = 3) buffer AreaLightBuffer { */
+/*   AreaLight AreaLights[]; */
+/* }; */
+
+/* layout(std430, binding = 4) buffer MeshesBuffer { */
 /*   Mesh Meshes[]; */
 /* }; */
 
-/* layout(std430, binding = 4) buffer IndicesBuffer { */
-/*   uint Indices[]; */
-/* }; */
-
-/* layout(std430, binding = 5) buffer VerticesBuffer { */
-/*   vec3 Vertices[]; */
-/* }; */
-
-/* layout(std430, binding = 6) buffer NormalsBuffer { */
-/*   vec3 Normals[]; */
-/* }; */
-
-/* layout(std430, binding = 7) buffer UVBuffer { */
-/*   vec2 UV[]; */
-/* }; */
-
-/* layout(std430, binding = 8) buffer MaterialsBuffer { */
+/* layout(std430, binding = 5) buffer MaterialsBuffer { */
 /*   Material Materials[]; */
 /* }; */
 
-/* layout(std430, binding = 9) buffer TransformsBuffer { */
+/* layout(std430, binding = 6) buffer IndicesBuffer { */
+/*   uint Indices[]; */
+/* }; */
+
+/* layout(std430, binding = 7) buffer VerticesBuffer { */
+/*   vec3 Vertices[]; */
+/* }; */
+
+/* layout(std430, binding = 8) buffer NormalsBuffer { */
+/*   vec3 Normals[]; */
+/* }; */
+
+/* layout(std430, binding = 9) buffer UVBuffer { */
+/*   vec2 UV[]; */
+/* }; */
+
+/* layout(std430, binding = 10) buffer TransformsBuffer { */
 /*   mat4 Transforms[]; */
 /* }; */
 
-const uint NUM_AREA_LIGHTS = 2;
+const uint NUM_AREA_LIGHTS = 1;
 const uint NUM_MATERIALS = 4;
 const uint NUM_MESHES = 8;
 const uint NUM_INDICES = 108;
 const uint NUM_VERTICES = 72;
 
 const AreaLight AreaLights[NUM_AREA_LIGHTS] = AreaLight[](
-  AreaLight(vec3(0, 0, 0), 0),
   AreaLight(vec3(17, 12, 4), 7)
 );
 
 const Mesh Meshes[NUM_MESHES] = Mesh[](
-  Mesh(0, 6, 1, 0),
-  Mesh(6, 12, 1, 0),
-  Mesh(12, 18, 1, 0),
-  Mesh(18, 24, 3, 0),
-  Mesh(24, 30, 2, 0),
-  Mesh(30, 66, 1, 0),
-  Mesh(66, 102, 1, 0),
-  Mesh(102, 108, 0, 1)
+  Mesh(0, 6, 1, -1),
+  Mesh(6, 12, 1, -1),
+  Mesh(12, 18, 1, -1),
+  Mesh(18, 24, 3, -1),
+  Mesh(24, 30, 2, -1),
+  Mesh(30, 66, 1, -1),
+  Mesh(66, 102, 1, -1),
+  Mesh(102, 108, 0, 0)
 );
 
 const Material Materials[NUM_MATERIALS] = Material[](

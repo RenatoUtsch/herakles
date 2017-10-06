@@ -30,6 +30,7 @@ struct vec4 {
   x: float;
   y: float;
   z: float;
+  w: float;
 }
 
 /// Represents a mat4x4 in GLSL.
@@ -40,47 +41,78 @@ struct mat4 {
   d: vec4;
 }
 
+struct PinholeCamera {
+  position: vec3;
+  fov: float;
+  direction: vec3;
+  up: vec3;
+  right: vec3;
+}
+
+/// Represents an area light.
+/// It's important to notice that area lights have a reference to their meshes
+/// and meshes have a reference to their area lights. This is an important
+/// optimization, and care should be taken to keep these indexes correct.
+struct AreaLight {
+  /// Light emission.
+  emission: vec3;
+
+  /// ID of the mesh that represents this light. The areaLightID in the mesh
+  /// must represent this light.
+  meshID: uint;
+}
+
 struct Mesh {
   /// First triangle vertex index from the Scene indices array.
-  beginIndex: uint;
+  begin: uint;
 
   /// One-past-last triangle vertex index from the Scene indices array.
-  endIndex: uint;
+  end: uint;
 
   /// ID of the material used in the mesh, from the Scene materials array.
   materialID: uint;
 
-  /// ID of the transformation used in the mesh, from the Scene transforms
-  /// array.
-  transformID: uint;
+  /// Index of the area light of this mesh. If < 0, the mesh doesn't emit light.
+  areaLightID: int;
+}
+
+struct Material {
+  /// Reflectivity of the diffuse surface.
+  kd: vec3;
 }
 
 table Scene {
-  /// Triangle meshes, each mesh combines triangle indices, materials and
-  /// transformations from this Scene table.
+  /// Area lights.
+  areaLights: [AreaLight];
+
+  /// Triangle meshes, each mesh combines triangles and other information from
+  /// this Scene table.
   meshes: [Mesh];
 
-  /// Indices of the triangle vertices. Each different mesh will have a number
-  /// of indices in this array.
+  /// Different materials present in the scene.
+  materials: [Material];
+
+  /// Indices of the triangle vertices. Every three indices represents a
+  /// triangle. Meshes reference these triangles through their begin and end
+  /// indices.
   indices: [uint];
 
   /// Triangle vertices.
   vertices: [vec3];
 
-  /// Per-vertex triangle normals. If present, shading normals will be computed
-  /// by interpolating these normals.
+  /// Per-vertex triangle normals. Shading normals will be computed by
+  /// interpolating these normals.
   normals: [vec3];
 
   /// Per-vertex texture coordinates. If the mesh is textured, this array must
   /// be present.
-  uv: [vec2];
-
-  /// Different materials present in the scene.
-  materials: [Material];
+  uvs: [vec2];
 
   /// Different textures present in the scene.
-  textures: [Texture];
+  // textures: [Texture];
 
   /// Transformations applied to the meshes before they're used.
-  transforms: [mat4];
+  // transforms: [mat4];
 }
+
+root_type Scene;

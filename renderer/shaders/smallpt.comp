@@ -34,7 +34,7 @@ layout(binding = 2, std140) uniform UniformBufferObject {
   uint frameCount;
 } ubo;
 
-const uint NUM_SAMPLES = 50;
+const uint NUM_SAMPLES = 60;
 const uint MAX_DEPTH = 4;
 
 const float EPSILON = 1e-7;
@@ -83,7 +83,7 @@ bool sceneIntersect(const Ray ray, out float t, out int id, int skip) {
   t = INF;
   for (int i = 0; i < NUM_SPHERES; ++i) {
     if (i != skip && sphereIntersect(ray, gSpheres[i], dist)
-        && dist < t && dist > EPSILON) {
+        && dist <= t - EPSILON && dist > EPSILON) {
       t = dist;
       id = i;
     }
@@ -108,7 +108,7 @@ vec3 radiance(Ray ray) {
     color += reflectance * sphere.emission;
     reflectance *= sphere.color;
 
-    /* if (sphere.material == DIFF) { // Ideal diffuse reflection */
+    if (sphere.material == DIFF) { // Ideal diffuse reflection
       const float u1 = rand();
       const float u2 = rand();
       const float theta = 2.0f * M_PI * u1;
@@ -125,40 +125,40 @@ vec3 radiance(Ray ray) {
           w * sqrt(1.0f - u2));
 
       ray = Ray(intersection, direction);
-    /* } else if (sphere.material == SPEC) { // Ideal specular reflection */
-    /*   ray = Ray(intersection, reflect(ray.direction, normal)); */
-    /* } else { // Ideal dielectric reflection/refraction */
-    /*   const Ray reflectionRay = Ray(intersection, reflect(ray.direction, normal)); */
-    /*   const bool fromOutsideToInside = dot(normal, orientedNormal) >= EPSILON; */
-    /*   const float nc = 1.0f, nt = 1.5f; */
-    /*   const float nnt = fromOutsideToInside ? nc / nt : nt / nc; */
-    /*   const float ddn = dot(ray.direction, orientedNormal); */
-    /*   const float cos2t = 1.0f - nnt * nnt * (1.0f - ddn * ddn); */
+    } else if (sphere.material == SPEC) { // Ideal specular reflection
+      ray = Ray(intersection, reflect(ray.direction, normal));
+    } else { // Ideal dielectric reflection/refraction
+      const Ray reflectionRay = Ray(intersection, reflect(ray.direction, normal));
+      const bool fromOutsideToInside = dot(normal, orientedNormal) >= EPSILON;
+      const float nc = 1.0f, nt = 1.5f;
+      const float nnt = fromOutsideToInside ? nc / nt : nt / nc;
+      const float ddn = dot(ray.direction, orientedNormal);
+      const float cos2t = 1.0f - nnt * nnt * (1.0f - ddn * ddn);
 
-    /*   if (cos2t <= -EPSILON) { // Total internal reflection */
-    /*     ray = reflectionRay; */
-    /*   } else { // Choose reflection or refraction */
-    /*     const vec3 tdir = normalize(ray.direction * nnt - normal * ( */
-    /*         ((fromOutsideToInside ? 1.0f : -1.0f) * (ddn * nnt + sqrt(cos2t))))); */
-    /*     const float a = nt - nc; */
-    /*     const float b = nt + nc; */
-    /*     const float r0 = a * a / (b * b); */
-    /*     const float c = 1.0f - (fromOutsideToInside ? -ddn : dot(tdir, normal)); */
-    /*     const float re = r0 + (1.0f - r0) * c * c * c * c * c; */
-    /*     const float tr = 1.0f - re; */
-    /*     const float p = 0.25f + 0.5f * re; */
-    /*     const float rp = re / p; */
-    /*     const float tp = tr / (1.0f - p); */
+      if (cos2t <= -EPSILON) { // Total internal reflection
+        ray = reflectionRay;
+      } else { // Choose reflection or refraction
+        const vec3 tdir = normalize(ray.direction * nnt - normal * (
+            ((fromOutsideToInside ? 1.0f : -1.0f) * (ddn * nnt + sqrt(cos2t)))));
+        const float a = nt - nc;
+        const float b = nt + nc;
+        const float r0 = a * a / (b * b);
+        const float c = 1.0f - (fromOutsideToInside ? -ddn : dot(tdir, normal));
+        const float re = r0 + (1.0f - r0) * c * c * c * c * c;
+        const float tr = 1.0f - re;
+        const float p = 0.25f + 0.5f * re;
+        const float rp = re / p;
+        const float tp = tr / (1.0f - p);
 
-    /*     if (rand() - p <= -EPSILON) { // Russian roulette */
-    /*       reflectance *= rp; */
-    /*       ray = reflectionRay; */
-    /*     } else { */
-    /*       reflectance *= tp; */
-    /*       ray = Ray(intersection, tdir); */
-    /*     } */
-    /*   } */
-    /* } */
+        if (rand() - p <= -EPSILON) { // Russian roulette
+          reflectance *= rp;
+          ray = reflectionRay;
+        } else {
+          reflectance *= tp;
+          ray = Ray(intersection, tdir);
+        }
+      }
+    }
   }
 
   return color;

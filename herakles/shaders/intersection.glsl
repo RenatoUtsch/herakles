@@ -72,8 +72,8 @@ bool intersectsTriangle(const Ray ray, const uint begin, out float t,
 bool intersectsScene(const Ray ray, out Interaction isect) {
   bool intersected = false;
   float t = INF;
-  uint meshID;
-  uint begin;
+  uint meshID = 0;
+  uint begin = 0;
   vec2 st;
 
   float currT;
@@ -82,7 +82,7 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
     const Mesh mesh = Meshes[i];
     for (uint j = mesh.begin; j < mesh.end; j += 3) {
       if (intersectsTriangle(ray, j, currT, currST) &&
-          currT < t  && currT > EPSILON) {
+          currT <= t - EPSILON  && currT > EPSILON) {
         intersected = true;
         t = currT;
         meshID = i;
@@ -122,7 +122,7 @@ bool unoccluded(const Ray ray, const float dist) {
   for (uint i = 0; i < NUM_MESHES; ++i) {
     const Mesh mesh = Meshes[i];
     for (uint j = mesh.begin; j < mesh.end; j += 3) {
-      if (intersectsTriangle(ray, j, currT, currST) && currT < minT
+      if (intersectsTriangle(ray, j, currT, currST) && currT <= minT - EPSILON
           && currT > EPSILON) {
         return false;
       }

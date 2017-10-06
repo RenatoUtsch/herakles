@@ -27,7 +27,7 @@
 
 // (u, v) = (s, t) for coordinates in Herakles.
 
-const uint NUM_SAMPLES = 10;
+const uint NUM_SAMPLES = 5;
 const uint MAX_DEPTH = 4;
 
 const float EPSILON = 1e-7;

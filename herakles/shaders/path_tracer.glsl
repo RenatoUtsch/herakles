@@ -32,7 +32,9 @@ vec3 radiance(Ray ray) {
   vec3 beta = vec3(1.0f);
   Interaction isect;
   for (int depth = 0; depth < MAX_DEPTH; ++depth) {
-    if (!intersectsScene(ray, isect)) return vec3(0.0f);
+    if (!intersectsScene(ray, isect)) {
+      return vec3(0.0f);
+    }
 
     // Direct light sampling in the first iteration.
     // Surfaces only emit light if they're being looked at from the front.

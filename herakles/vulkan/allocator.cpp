@@ -118,4 +118,28 @@ SharedDeviceMemory allocateMemory(
   return allocateAndRegisterMemory_(device, properties, images);
 }
 
+void oneTimeSetup(const Buffer &buffer,
+                  std::function<void(const Buffer &)> functor) {
+  hk::Buffer stagingBuffer(buffer.device(), buffer.requestedSize(),
+                           vk::BufferUsageFlagBits::eTransferSrc);
+  const auto tempMemory =
+      allocateMemory(buffer.device(),
+                     vk::MemoryPropertyFlagBits::eHostVisible |
+                         vk::MemoryPropertyFlagBits::eHostCoherent,
+                     {stagingBuffer});
+  functor(stagingBuffer);
+}
+
+void oneTimeSetup(const Image &image,
+                  std::function<void(const Buffer &)> functor) {
+  hk::Buffer stagingBuffer(image.device(), image.requestedSize(),
+                           vk::BufferUsageFlagBits::eTransferSrc);
+  const auto tempMemory =
+      allocateMemory(image.device(),
+                     vk::MemoryPropertyFlagBits::eHostVisible |
+                         vk::MemoryPropertyFlagBits::eHostCoherent,
+                     {stagingBuffer});
+  functor(stagingBuffer);
+}
+
 }  // namespace hk

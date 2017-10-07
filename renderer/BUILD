@@ -28,6 +28,7 @@ cc_binary(
         "//renderer/shaders:smallpt",
     ],
     deps = [
+        "//herakles/scene",
         "//herakles/vulkan:allocator",
         "//herakles/vulkan:buffer",
         "//herakles/vulkan:camera",

@@ -78,7 +78,8 @@ class Buffer {
    * This only adds the command to the command buffer, and does not schedule
    * anything for execution.
    */
-  void copyTo(const vk::CommandBuffer &commandBuffer, const Buffer &dstBuffer);
+  void copyTo(const vk::CommandBuffer &commandBuffer,
+              const Buffer &dstBuffer) const;
 
   /**
    * Copies this entire buffer to destImage.
@@ -87,7 +88,7 @@ class Buffer {
    */
   void copyTo(const vk::CommandBuffer &commandBuffer, const Image &dstImage,
               const vk::ImageLayout &imageLayout =
-                  vk::ImageLayout::eTransferDstOptimal);
+                  vk::ImageLayout::eTransferDstOptimal) const;
 
   /// Returns the vulkan buffer.
   const vk::Buffer &vkBuffer() const { return *vkBuffer_; }
@@ -96,6 +97,12 @@ class Buffer {
   const vk::MemoryRequirements &memoryRequirements() const {
     return memoryRequirements_;
   }
+
+  /// Returns the device of this buffer.
+  const Device &device() const { return device_; }
+
+  /// Returns the requested device size.
+  const vk::DeviceSize &requestedSize() const { return requestedSize_; }
 
   /// Returns the memory requirements size.
   const vk::DeviceSize &size() const { return memoryRequirements_.size; }
@@ -116,6 +123,7 @@ class Buffer {
   vk::DeviceSize memoryOffset_;
 
   vk::UniqueBuffer vkBuffer_;
+  vk::DeviceSize requestedSize_;
   vk::MemoryRequirements memoryRequirements_;
 };
 

@@ -165,6 +165,17 @@ class Image {
     return memoryRequirements_;
   }
 
+  /// Returns the device of this image.
+  const Device &device() const { return device_; }
+
+  /**
+   * Returns the requested size at image's creation time.
+   * For images, this is the same as size().
+   */
+  const vk::DeviceSize &requestedSize() const {
+    return memoryRequirements_.size;
+  }
+
   /**
    * Returns the size memory requirements size.
    * This will NOT return a meaningful value unless the allocation is managed

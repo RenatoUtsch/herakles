@@ -26,6 +26,13 @@ load(
 spirv_repositories(omit_com_github_renatoutsch_rules_system = True)
 
 load(
+    "@com_github_renatoutsch_rules_flatbuffers//flatbuffers:defs.bzl",
+    "flatbuffers_repositories",
+)
+
+flatbuffers_repositories()
+
+load(
     "@com_github_renatoutsch_rules_system//system:defs.bzl",
     "local_cc_library",
 )

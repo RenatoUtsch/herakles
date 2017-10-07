@@ -32,7 +32,8 @@ HERAKLES_C_COPTS = [
     "-std=c11",
 ]
 
-def herakles_repositories(omit_com_github_renatoutsch_rules_system=False,
+def herakles_repositories(omit_com_github_renatoutsch_rules_flatbuffers=False,
+                          omit_com_github_renatoutsch_rules_system=False,
                           omit_com_github_renatoutsch_rules_spirv=False,
                           omit_com_github_gflags_gflags=False,
                           omit_com_github_gtruc_glm=False,
@@ -42,6 +43,8 @@ def herakles_repositories(omit_com_github_renatoutsch_rules_system=False,
                           omit_com_google_glog=False,
                           omit_com_google_googletest=False):
     """Imports dependencies for Herakles."""
+    if not omit_com_github_renatoutsch_rules_flatbuffers:
+        com_github_renatoutsch_rules_flatbuffers()
     if not omit_com_github_renatoutsch_rules_system:
         com_github_renatoutsch_rules_system()
     if not omit_com_github_renatoutsch_rules_spirv:
@@ -60,6 +63,15 @@ def herakles_repositories(omit_com_github_renatoutsch_rules_system=False,
         com_google_googletest()
     if not omit_com_github_nothings_stb:
         com_github_nothings_stb()
+
+def com_github_renatoutsch_rules_flatbuffers():
+    # TODO(renatoutsch): use a tag or commit once there's a release
+    native.http_archive(
+        name = "com_github_renatoutsch_rules_flatbuffers",
+        #sha256 = "",  # TODO(renatoutsch): add once there's a release
+        strip_prefix = "rules_flatbuffers-master",
+        urls = ["https://github.com/RenatoUtsch/rules_flatbuffers/archive/master.zip"],
+    )
 
 def com_github_renatoutsch_rules_system():
     # TODO(renatoutsch): use a tag or commit once there's a release

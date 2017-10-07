@@ -21,7 +21,7 @@ namespace hk {
 Buffer::Buffer(const Device &device, const vk::DeviceSize &size,
                const vk::BufferUsageFlags &usage,
                const std::vector<uint32_t> &queueFamilyIndices)
-    : device_(device) {
+    : device_(device), requestedSize_(size) {
   vk::BufferCreateInfo createInfo;
   createInfo.setSize(size).setUsage(usage);
 
@@ -61,7 +61,7 @@ void Buffer::mapMemory(std::function<void(void *)> functor,
 }
 
 void Buffer::copyTo(const vk::CommandBuffer &commandBuffer,
-                    const Buffer &dstBuffer) {
+                    const Buffer &dstBuffer) const {
   vk::BufferCopy copyRegion;
   copyRegion.setSize(memoryRequirements_.size);
 
@@ -69,7 +69,8 @@ void Buffer::copyTo(const vk::CommandBuffer &commandBuffer,
 }
 
 void Buffer::copyTo(const vk::CommandBuffer &commandBuffer,
-                    const Image &dstImage, const vk::ImageLayout &imageLayout) {
+                    const Image &dstImage,
+                    const vk::ImageLayout &imageLayout) const {
   vk::BufferImageCopy copyRegion;
 
   copyRegion.setImageSubresource(dstImage.subresource())

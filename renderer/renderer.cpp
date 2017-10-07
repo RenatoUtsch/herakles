@@ -17,6 +17,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -31,6 +32,7 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 
+#include "herakles/scene/scene_generated.h"
 #include "herakles/vulkan/allocator.hpp"
 #include "herakles/vulkan/buffer.hpp"
 #include "herakles/vulkan/camera.hpp"
@@ -48,12 +50,13 @@
 #include "herakles/vulkan/swapchain.hpp"
 
 // TODO(renatoutsch): validate these flags.
-DEFINE_string(
-    output_file, "",
-    "Output file of the rendered surface. Will replace any existing files.");
+DEFINE_string(output_file, "",
+              "Output file of the rendered surface. Will replace any "
+              "existing files.");
 DEFINE_string(
     surface_type, "windowed",
     "Surface type. One of \"windowed\",\"fullscreen\" and \"headless\".");
+DEFINE_string(scene_file, "", "Binary .hks scene file to be rendered.");
 DEFINE_string(shader_file, "", "Shader binary to be executed.");
 DEFINE_string(shader_entry_point, "main", "Entry point of the shader binary.");
 DEFINE_int32(width, 800, "Width resolution of the surface.");
@@ -72,20 +75,35 @@ struct UniformBufferObject {
   uint32_t frameCount = 0;
 };
 
+std::vector<uint8_t> readFile(const std::string &filename) {
+  std::ifstream file(filename, std::ios::binary | std::ios::ate);
+  CHECK(file.is_open()) << "Couldn't open input scene file.";
+
+  std::streamsize size = file.tellg();
+  file.seekg(0, std::ios::beg);
+
+  std::vector<uint8_t> buffer(size);
+  CHECK(file.read((char *)buffer.data(), size));
+
+  return buffer;
+}
+
 class Renderer {
  public:
   Renderer(const char *appName, uint32_t appVersion,
-           const std::string &shaderFilename,
+           const std::string &sceneFilename, const std::string &shaderFilename,
            const std::string shaderEntryPoint, int width, int height,
            bool fullscreen, bool enableValidationLayers)
-      : instance_(appName, appVersion, enableValidationLayers,
+      : sceneBuffer_(readFile(sceneFilename)),
+        scene_(hk::scene::GetScene(sceneBuffer_.data())),
+        instance_(appName, appVersion, enableValidationLayers,
                   surfaceProvider_),
         surface_(surfaceProvider_, instance_, appName, width, height,
                  fullscreen),
         pipeline_(device_,
                   hk::Shader(shaderFilename, shaderEntryPoint, device_),
                   descriptorSetLayout_) {
-    initializeSeeds_();
+    initializeGPUData_();
   }
 
   void run() {
@@ -170,22 +188,49 @@ class Renderer {
   }
 
   hk::DescriptorSetLayout createDescriptorSetLayout_() {
-    vk::DescriptorSetLayoutBinding binding0;
-    binding0.setBinding(0)
+    std::vector<vk::DescriptorSetLayoutBinding> bindings(9);
+    bindings[0]
+        .setBinding(0)
         .setDescriptorType(vk::DescriptorType::eStorageImage)
         .setDescriptorCount(1);
-
-    vk::DescriptorSetLayoutBinding binding1;
-    binding1.setBinding(1)
+    bindings[1]
+        .setBinding(1)
         .setDescriptorType(vk::DescriptorType::eStorageImage)
         .setDescriptorCount(1);
-
-    vk::DescriptorSetLayoutBinding binding2;
-    binding2.setBinding(2)
+    bindings[2]
+        .setBinding(2)
         .setDescriptorType(vk::DescriptorType::eUniformBuffer)
         .setDescriptorCount(1);
+    bindings[3]
+        .setBinding(3)
+        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+        .setDescriptorCount(1);
+    bindings[4]
+        .setBinding(4)
+        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+        .setDescriptorCount(1);
+    bindings[5]
+        .setBinding(5)
+        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+        .setDescriptorCount(1);
+    bindings[6]
+        .setBinding(6)
+        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+        .setDescriptorCount(1);
+    bindings[7]
+        .setBinding(7)
+        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+        .setDescriptorCount(1);
+    bindings[8]
+        .setBinding(8)
+        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+        .setDescriptorCount(1);
+    bindings[9]
+        .setBinding(9)
+        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+        .setDescriptorCount(1);
 
-    return hk::DescriptorSetLayout(device_, {binding0, binding1, binding2});
+    return hk::DescriptorSetLayout(device_, bindings);
   }
 
   /// Creates the command buffers used when rendering, one for each image in
@@ -255,17 +300,6 @@ class Renderer {
     return submitInfos;
   }
 
-  hk::Buffer createUBOBuffer_() {
-    return hk::Buffer(device_, sizeof(ubo_),
-                      vk::BufferUsageFlagBits::eUniformBuffer |
-                          vk::BufferUsageFlagBits::eTransferDst);
-  }
-
-  hk::Buffer createUBOStagingBuffer_() {
-    return hk::Buffer(device_, sizeof(ubo_),
-                      vk::BufferUsageFlagBits::eTransferSrc);
-  }
-
   hk::Image createFrameImage_() {
     auto image = hk::Image(
         device_, swapchain_.width(), swapchain_.height(),
@@ -301,12 +335,6 @@ class Renderer {
     return image;
   }
 
-  hk::Buffer createSeedStagingBuffer_() {
-    return hk::Buffer(
-        device_, swapchain_.width() * swapchain_.height() * sizeof(uint32_t),
-        vk::BufferUsageFlagBits::eTransferSrc);
-  }
-
   hk::SharedDeviceMemory createLocalImageMemory_() {
     return hk::allocateMemory(device_, vk::MemoryPropertyFlagBits::eDeviceLocal,
                               {frameImage_, seedImage_});
@@ -321,22 +349,74 @@ class Renderer {
     return hk::allocateMemory(device_,
                               vk::MemoryPropertyFlagBits::eHostVisible |
                                   vk::MemoryPropertyFlagBits::eHostCoherent,
-                              {uboStagingBuffer_, seedStagingBuffer_});
+                              {uboStagingBuffer_});
   }
 
   /// Creates a descriptor set for when the swapchain is not acquired.
   hk::DescriptorSet createFrameDescriptorSet_() {
     return hk::DescriptorSet(
         descriptorPool_,
-        {vk::DescriptorImageInfo(vk::Sampler(), *frameImageView_,
-                                 vk::ImageLayout::eGeneral),
-         vk::DescriptorImageInfo(vk::Sampler(), *seedImageView_,
-                                 vk::ImageLayout::eGeneral),
-         vk::DescriptorBufferInfo(uboBuffer_.vkBuffer(), 0, sizeof(ubo_))});
+        {
+            vk::DescriptorImageInfo(vk::Sampler(), *frameImageView_,
+                                    vk::ImageLayout::eGeneral),
+            vk::DescriptorImageInfo(vk::Sampler(), *seedImageView_,
+                                    vk::ImageLayout::eGeneral),
+            vk::DescriptorBufferInfo(uboBuffer_.vkBuffer(), 0,
+                                     uboBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(areaLightBuffer_.vkBuffer(), 0,
+                                     areaLightBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(meshBuffer_.vkBuffer(), 0,
+                                     meshBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(materialBuffer_.vkBuffer(), 0,
+                                     materialBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(indexBuffer_.vkBuffer(), 0,
+                                     indexBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(vertexBuffer_.vkBuffer(), 0,
+                                     vertexBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(normalBuffer_.vkBuffer(), 0,
+                                     normalBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(uvBuffer_.vkBuffer(), 0,
+                                     uvBuffer_.requestedSize()),
+        });
+  }
+
+  /// Sets up a buffer with the given data accessor.
+  void setupBuffer_(const hk::Buffer &buffer,
+                    std::function<void *()> accessor) {
+    hk::oneTimeSetup(buffer, [&](const hk::Buffer &stagingBuffer) {
+      stagingBuffer.mapMemory(
+          [&](void *data) { memcpy(data, accessor(), stagingBuffer.size()); });
+
+      device_.submitOneTimeComputeCommands(
+          [&](const vk::CommandBuffer &commandBuffer) {
+            stagingBuffer.copyTo(commandBuffer, buffer);
+          });
+      device_.vkComputeQueue().waitIdle();
+    });
+  }
+
+  /// Initializes the GPU data that doesn't need a persistent staging buffer.
+  void initializeGPUData_() {
+    hk::oneTimeSetup(seedImage_, [this](const hk::Buffer &stagingBuffer) {
+      initializeSeeds_(stagingBuffer);
+    });
+    setupBuffer_(areaLightBuffer_,
+                 [&]() { return (void *)scene_->areaLights()->Data(); });
+    setupBuffer_(meshBuffer_,
+                 [&]() { return (void *)scene_->meshes()->Data(); });
+    setupBuffer_(materialBuffer_,
+                 [&]() { return (void *)scene_->materials()->Data(); });
+    setupBuffer_(indexBuffer_,
+                 [&]() { return (void *)scene_->indices()->Data(); });
+    setupBuffer_(vertexBuffer_,
+                 [&]() { return (void *)scene_->vertices()->Data(); });
+    setupBuffer_(normalBuffer_,
+                 [&]() { return (void *)scene_->normals()->Data(); });
+    setupBuffer_(uvBuffer_, [&]() { return (void *)scene_->uvs()->Data(); });
   }
 
   /// Initializes the seeds used in rendering.
-  void initializeSeeds_() {
+  void initializeSeeds_(const hk::Buffer &stagingBuffer) {
     std::random_device randomDevice;
     std::mt19937 rng(randomDevice());
     std::uniform_int_distribution<uint32_t> distribution;
@@ -347,19 +427,19 @@ class Renderer {
       n = distribution(rng);
     }
 
-    seedStagingBuffer_.mapMemory([&randomNumbers](void *data) {
+    stagingBuffer.mapMemory([&randomNumbers](void *data) {
       memcpy(data, randomNumbers.data(),
              sizeof(randomNumbers[0]) * randomNumbers.size());
     });
 
     device_.submitOneTimeComputeCommands(
-        [this](const vk::CommandBuffer &commandBuffer) {
+        [&](const vk::CommandBuffer &commandBuffer) {
           seedImage_.layoutTransitionBarrier(
               commandBuffer, vk::ImageLayout::eUndefined,
               vk::ImageLayout::eTransferDstOptimal, {},
               vk::AccessFlagBits::eTransferWrite);
 
-          seedStagingBuffer_.copyTo(commandBuffer, seedImage_);
+          stagingBuffer.copyTo(commandBuffer, seedImage_);
 
           seedImage_.layoutTransitionBarrier(
               commandBuffer, vk::ImageLayout::eTransferDstOptimal,
@@ -369,6 +449,9 @@ class Renderer {
     device_.vkComputeQueue().waitIdle();
   }
 
+  const std::vector<uint8_t> sceneBuffer_;
+  const hk::scene::Scene *scene_;
+
   hk::SurfaceProvider surfaceProvider_;
   hk::Instance instance_;
   hk::Surface surface_;
@@ -376,28 +459,73 @@ class Renderer {
       hk::pickPhysicalDevice(instance_, surface_);
   hk::Device device_ = hk::Device(instance_, physicalDevice_);
   hk::Swapchain swapchain_ = hk::Swapchain(surface_, device_);
+
   hk::DescriptorSetLayout descriptorSetLayout_ = createDescriptorSetLayout_();
   hk::Pipeline pipeline_;
   hk::DescriptorPool descriptorPool_ =
       hk::DescriptorPool(descriptorSetLayout_, 1);  // frameDescriptorSet_
+
   hk::Image frameImage_ = createFrameImage_();
   hk::Image seedImage_ = createSeedImage_();
+
   UniformBufferObject ubo_;
-  hk::Buffer uboBuffer_ = createUBOBuffer_();
-  hk::Buffer uboStagingBuffer_ = createUBOStagingBuffer_();
-  hk::Buffer seedStagingBuffer_ = createSeedStagingBuffer_();
+  hk::Buffer uboBuffer_ = hk::Buffer(device_, sizeof(ubo_),
+                                     vk::BufferUsageFlagBits::eUniformBuffer |
+                                         vk::BufferUsageFlagBits::eTransferDst);
+  hk::Buffer uboStagingBuffer_ =
+      hk::Buffer(device_, sizeof(ubo_), vk::BufferUsageFlagBits::eTransferSrc);
+
+  hk::Buffer areaLightBuffer_ = hk::Buffer(
+      device_, scene_->areaLights()->Length() * sizeof(hk::scene::AreaLight),
+      vk::BufferUsageFlagBits::eStorageBuffer |
+          vk::BufferUsageFlagBits::eTransferDst);
+
+  hk::Buffer meshBuffer_ =
+      hk::Buffer(device_, scene_->meshes()->Length() * sizeof(hk::scene::Mesh),
+                 vk::BufferUsageFlagBits::eStorageBuffer |
+                     vk::BufferUsageFlagBits::eTransferDst);
+
+  hk::Buffer materialBuffer_ = hk::Buffer(
+      device_, scene_->materials()->Length() * sizeof(hk::scene::Material),
+      vk::BufferUsageFlagBits::eStorageBuffer |
+          vk::BufferUsageFlagBits::eTransferDst);
+
+  hk::Buffer indexBuffer_ =
+      hk::Buffer(device_, scene_->indices()->Length() * sizeof(uint32_t),
+                 vk::BufferUsageFlagBits::eStorageBuffer |
+                     vk::BufferUsageFlagBits::eTransferDst);
+
+  hk::Buffer vertexBuffer_ = hk::Buffer(
+      device_, scene_->vertices()->Length() * sizeof(hk::scene::vec3),
+      vk::BufferUsageFlagBits::eStorageBuffer |
+          vk::BufferUsageFlagBits::eTransferDst);
+
+  hk::Buffer normalBuffer_ =
+      hk::Buffer(device_, scene_->normals()->Length() * sizeof(hk::scene::vec3),
+                 vk::BufferUsageFlagBits::eStorageBuffer |
+                     vk::BufferUsageFlagBits::eTransferDst);
+
+  hk::Buffer uvBuffer_ =
+      hk::Buffer(device_, scene_->uvs()->Length() * sizeof(hk::scene::vec2),
+                 vk::BufferUsageFlagBits::eStorageBuffer |
+                     vk::BufferUsageFlagBits::eTransferDst);
+
   hk::SharedDeviceMemory localImageMemory_ = createLocalImageMemory_();
   hk::SharedDeviceMemory localBufferMemory_ = createLocalBufferMemory_();
   hk::SharedDeviceMemory stagingBufferMemory_ = createStagingBufferMemory_();
+
   vk::UniqueImageView frameImageView_ = frameImage_.createImageView();
   vk::UniqueImageView seedImageView_ = seedImage_.createImageView();
+
   hk::DescriptorSet frameDescriptorSet_ = createFrameDescriptorSet_();
   std::vector<vk::CommandBuffer> swapchainCommandBuffers_ =
       createSwapchainCommandBuffers_();
   std::vector<vk::SubmitInfo> swapchainSubmitInfos_ =
       createSwapchainSubmitInfos_();
+
   vk::UniqueSemaphore imageAvailableSemaphore_ = device_.createSemaphore();
   vk::UniqueSemaphore renderFinishedSemaphore_ = device_.createSemaphore();
+
   hk::CameraManager cameraManager_ = hk::CameraManager(surface_);
 
   std::chrono::high_resolution_clock timer_;
@@ -426,9 +554,9 @@ int main(int argc, char **argv) {
     LOG(FATAL) << "Invalid surface_type flag.";
   }
 
-  Renderer renderer(RendererName, RendererVersion, FLAGS_shader_file,
-                    FLAGS_shader_entry_point, FLAGS_width, FLAGS_height,
-                    fullscreen, FLAGS_enable_validation_layers);
+  Renderer renderer(RendererName, RendererVersion, FLAGS_scene_file,
+                    FLAGS_shader_file, FLAGS_shader_entry_point, FLAGS_width,
+                    FLAGS_height, fullscreen, FLAGS_enable_validation_layers);
   LOG(INFO) << "Created renderer";
 
   renderer.run();

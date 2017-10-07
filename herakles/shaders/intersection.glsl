@@ -78,7 +78,8 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
 
   float currT;
   vec2 currST;
-  for (uint i = 0; i < NUM_MESHES; ++i) {
+  const uint numMeshes = Meshes.length();
+  for (uint i = 0; i < numMeshes; ++i) {
     const Mesh mesh = Meshes[i];
     for (uint j = mesh.begin; j < mesh.end; j += 3) {
       if (intersectsTriangle(ray, j, currT, currST) &&
@@ -119,7 +120,8 @@ bool unoccluded(const Ray ray, const float dist) {
   const float minT = dist - 1e-4; // To prevent hitting objects at exactly dist.
   float currT;
   vec2 currST;
-  for (uint i = 0; i < NUM_MESHES; ++i) {
+  const uint numMeshes = Meshes.length();
+  for (uint i = 0; i < numMeshes; ++i) {
     const Mesh mesh = Meshes[i];
     for (uint j = mesh.begin; j < mesh.end; j += 3) {
       if (intersectsTriangle(ray, j, currT, currST) && currT <= minT - EPSILON

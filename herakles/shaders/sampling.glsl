@@ -57,7 +57,7 @@ Interaction sampleTriangle(const uint meshID, const uint begin) {
 /// contribution output is set to the light contribution to the intersection.
 /// Be sure the number of area lights is > 1 when calling this.
 bool sampleOneLight(const Interaction isect, out vec3 contribution) {
-  const AreaLight light = AreaLights[urand(NUM_AREA_LIGHTS)];
+  const AreaLight light = AreaLights[urand(AreaLights.length())];
   const Mesh mesh = Meshes[light.meshID];
 
   // Chooses a triangle from the mesh at random.

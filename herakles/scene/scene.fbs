@@ -8,7 +8,7 @@
 // likely not be easy to do. Instead, a better idea is to write a scene in
 // another format (like the PBRT format subset) and use a converter.
 
-namespace herakles.scene;
+namespace hk.scene;
 file_identifier "HKS1";
 file_extension "hks";
 

@@ -59,6 +59,32 @@ SharedDeviceMemory allocateMemory(
     const Device &device, const vk::MemoryPropertyFlags &properties,
     const std::vector<std::reference_wrapper<Image>> &images);
 
+/**
+ * One time buffer setup.
+ * This setup is not as efficient as it could be, because it creates one device
+ * memory per call, but it's not a problem for one-time setups, and it
+ * simplifies the code a lot.
+ * @param buffer The final buffer that will be setup. The temporary staging
+ *   buffer will be the same size as this buffer.
+ * @param functor Function that receives a pointer to the staging buffer and
+ *   realizes the one-time setup.
+ */
+void oneTimeSetup(const Buffer &buffer,
+                  std::function<void(const Buffer &)> functor);
+
+/**
+ * One time image setup.
+ * This setup is not as efficient as it could be, because it creates one device
+ * memory per call, but it's not a problem for one-time setups, and it
+ * simplifies the code a lot.
+ * @param image The final image that will be setup. The temporary staging
+ *   buffer will be the same size as this image.
+ * @param functor Function that receives a pointer to the staging buffer and
+ *   realizes the one-time setup.
+ */
+void oneTimeSetup(const Image &image,
+                  std::function<void(const Buffer &)> functor);
+
 }  // namespace hk
 
 #endif  // !HERAKLES_HERAKLES_VULKAN_ALLOCATOR_HPP

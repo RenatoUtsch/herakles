@@ -141,6 +141,7 @@ cc_library(
     copts = HERAKLES_CPP_COPTS,
     deps = [
         ":descriptor_set_layout",
+        "//third_party:glog",
         "//third_party:vulkan_hpp",
     ],
 )

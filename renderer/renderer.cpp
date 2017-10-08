@@ -103,6 +103,7 @@ class Renderer {
         pipeline_(device_,
                   hk::Shader(shaderFilename, shaderEntryPoint, device_),
                   descriptorSetLayout_) {
+    logSceneStats_();
     initializeGPUData_();
   }
 
@@ -188,7 +189,8 @@ class Renderer {
   }
 
   hk::DescriptorSetLayout createDescriptorSetLayout_() {
-    std::vector<vk::DescriptorSetLayoutBinding> bindings(9);
+    const size_t numBindings = 10;
+    std::vector<vk::DescriptorSetLayoutBinding> bindings(numBindings);
     bindings[0]
         .setBinding(0)
         .setDescriptorType(vk::DescriptorType::eStorageImage)
@@ -201,34 +203,13 @@ class Renderer {
         .setBinding(2)
         .setDescriptorType(vk::DescriptorType::eUniformBuffer)
         .setDescriptorCount(1);
-    bindings[3]
-        .setBinding(3)
-        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-        .setDescriptorCount(1);
-    bindings[4]
-        .setBinding(4)
-        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-        .setDescriptorCount(1);
-    bindings[5]
-        .setBinding(5)
-        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-        .setDescriptorCount(1);
-    bindings[6]
-        .setBinding(6)
-        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-        .setDescriptorCount(1);
-    bindings[7]
-        .setBinding(7)
-        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-        .setDescriptorCount(1);
-    bindings[8]
-        .setBinding(8)
-        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-        .setDescriptorCount(1);
-    bindings[9]
-        .setBinding(9)
-        .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-        .setDescriptorCount(1);
+
+    for (size_t i = 3; i < numBindings; ++i) {
+      bindings[i]
+          .setBinding(i)
+          .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+          .setDescriptorCount(1);
+    }
 
     return hk::DescriptorSetLayout(device_, bindings);
   }
@@ -315,6 +296,7 @@ class Renderer {
         });
     device_.vkComputeQueue().waitIdle();
 
+    LOG(INFO) << "Created frame image";
     return image;
   }
 
@@ -332,20 +314,48 @@ class Renderer {
         });
     device_.vkComputeQueue().waitIdle();
 
+    LOG(INFO) << "Created seed image";
     return image;
   }
 
+  hk::Buffer createStorageBuffer_(vk::DeviceSize size) {
+    return hk::Buffer(device_, size,
+                      vk::BufferUsageFlagBits::eUniformBuffer |
+                          vk::BufferUsageFlagBits::eTransferDst);
+  }
+
+  template <typename T>
+  hk::Buffer createStorageBuffer_(const flatbuffers::Vector<const T *> *vec) {
+    return createStorageBuffer_(vec->size() * sizeof(T));
+  }
+
+  template <typename T>
+  hk::Buffer createStorageBuffer_(const flatbuffers::Vector<T> *vec) {
+    return createStorageBuffer_(vec->size() * sizeof(T));
+  }
+
+  /// Staging buffer for the given buffer.
+  hk::Buffer createStagingBuffer_(const hk::Buffer &buffer) {
+    return hk::Buffer(device_, buffer.requestedSize(),
+                      vk::BufferUsageFlagBits::eTransferSrc);
+  }
+
   hk::SharedDeviceMemory createLocalImageMemory_() {
+    LOG(INFO) << "Allocating local image memory";
     return hk::allocateMemory(device_, vk::MemoryPropertyFlagBits::eDeviceLocal,
                               {frameImage_, seedImage_});
   }
 
   hk::SharedDeviceMemory createLocalBufferMemory_() {
-    return hk::allocateMemory(device_, vk::MemoryPropertyFlagBits::eDeviceLocal,
-                              {uboBuffer_});
+    LOG(INFO) << "Allocating local buffer memory";
+    return hk::allocateMemory(
+        device_, vk::MemoryPropertyFlagBits::eDeviceLocal,
+        {uboBuffer_, areaLightBuffer_, meshBuffer_, materialBuffer_,
+         indexBuffer_, vertexBuffer_, normalBuffer_, uvBuffer_});
   }
 
   hk::SharedDeviceMemory createStagingBufferMemory_() {
+    LOG(INFO) << "Allocating staging buffer memory";
     return hk::allocateMemory(device_,
                               vk::MemoryPropertyFlagBits::eHostVisible |
                                   vk::MemoryPropertyFlagBits::eHostCoherent,
@@ -380,12 +390,30 @@ class Renderer {
         });
   }
 
+  void logSceneStats_() {
+    LOG(INFO) << "areaLights()->size(): " << scene_->areaLights()->size()
+              << " (" << areaLightBuffer_.requestedSize() << " bytes)";
+    LOG(INFO) << "meshes()->size(): " << scene_->meshes()->size() << " ("
+              << meshBuffer_.requestedSize() << " bytes)";
+    LOG(INFO) << "materials()->size(): " << scene_->materials()->size() << " ("
+              << materialBuffer_.requestedSize() << " bytes)";
+    LOG(INFO) << "indices()->size(): " << scene_->indices()->size() << " ("
+              << indexBuffer_.requestedSize() << " bytes)";
+    LOG(INFO) << "vertices()->size(): " << scene_->vertices()->size() << " ("
+              << vertexBuffer_.requestedSize() << " bytes)";
+    LOG(INFO) << "normals()->size(): " << scene_->normals()->size() << " ("
+              << normalBuffer_.requestedSize() << " bytes)";
+    LOG(INFO) << "uvs()->size(): " << scene_->uvs()->size() << " ("
+              << uvBuffer_.requestedSize() << " bytes)";
+  }
+
   /// Sets up a buffer with the given data accessor.
   void setupBuffer_(const hk::Buffer &buffer,
                     std::function<void *()> accessor) {
     hk::oneTimeSetup(buffer, [&](const hk::Buffer &stagingBuffer) {
-      stagingBuffer.mapMemory(
-          [&](void *data) { memcpy(data, accessor(), stagingBuffer.size()); });
+      stagingBuffer.mapMemory([&](void *data) {
+        memcpy(data, accessor(), stagingBuffer.requestedSize());
+      });
 
       device_.submitOneTimeComputeCommands(
           [&](const vk::CommandBuffer &commandBuffer) {
@@ -463,52 +491,21 @@ class Renderer {
   hk::DescriptorSetLayout descriptorSetLayout_ = createDescriptorSetLayout_();
   hk::Pipeline pipeline_;
   hk::DescriptorPool descriptorPool_ =
-      hk::DescriptorPool(descriptorSetLayout_, 1);  // frameDescriptorSet_
+      hk::DescriptorPool(descriptorSetLayout_, 1);
 
   hk::Image frameImage_ = createFrameImage_();
   hk::Image seedImage_ = createSeedImage_();
 
   UniformBufferObject ubo_;
-  hk::Buffer uboBuffer_ = hk::Buffer(device_, sizeof(ubo_),
-                                     vk::BufferUsageFlagBits::eUniformBuffer |
-                                         vk::BufferUsageFlagBits::eTransferDst);
-  hk::Buffer uboStagingBuffer_ =
-      hk::Buffer(device_, sizeof(ubo_), vk::BufferUsageFlagBits::eTransferSrc);
-
-  hk::Buffer areaLightBuffer_ = hk::Buffer(
-      device_, scene_->areaLights()->Length() * sizeof(hk::scene::AreaLight),
-      vk::BufferUsageFlagBits::eStorageBuffer |
-          vk::BufferUsageFlagBits::eTransferDst);
-
-  hk::Buffer meshBuffer_ =
-      hk::Buffer(device_, scene_->meshes()->Length() * sizeof(hk::scene::Mesh),
-                 vk::BufferUsageFlagBits::eStorageBuffer |
-                     vk::BufferUsageFlagBits::eTransferDst);
-
-  hk::Buffer materialBuffer_ = hk::Buffer(
-      device_, scene_->materials()->Length() * sizeof(hk::scene::Material),
-      vk::BufferUsageFlagBits::eStorageBuffer |
-          vk::BufferUsageFlagBits::eTransferDst);
-
-  hk::Buffer indexBuffer_ =
-      hk::Buffer(device_, scene_->indices()->Length() * sizeof(uint32_t),
-                 vk::BufferUsageFlagBits::eStorageBuffer |
-                     vk::BufferUsageFlagBits::eTransferDst);
-
-  hk::Buffer vertexBuffer_ = hk::Buffer(
-      device_, scene_->vertices()->Length() * sizeof(hk::scene::vec3),
-      vk::BufferUsageFlagBits::eStorageBuffer |
-          vk::BufferUsageFlagBits::eTransferDst);
-
-  hk::Buffer normalBuffer_ =
-      hk::Buffer(device_, scene_->normals()->Length() * sizeof(hk::scene::vec3),
-                 vk::BufferUsageFlagBits::eStorageBuffer |
-                     vk::BufferUsageFlagBits::eTransferDst);
-
-  hk::Buffer uvBuffer_ =
-      hk::Buffer(device_, scene_->uvs()->Length() * sizeof(hk::scene::vec2),
-                 vk::BufferUsageFlagBits::eStorageBuffer |
-                     vk::BufferUsageFlagBits::eTransferDst);
+  hk::Buffer uboBuffer_ = createStorageBuffer_(sizeof(ubo_));
+  hk::Buffer uboStagingBuffer_ = createStagingBuffer_(uboBuffer_);
+  hk::Buffer areaLightBuffer_ = createStorageBuffer_(scene_->areaLights());
+  hk::Buffer meshBuffer_ = createStorageBuffer_(scene_->meshes());
+  hk::Buffer materialBuffer_ = createStorageBuffer_(scene_->materials());
+  hk::Buffer indexBuffer_ = createStorageBuffer_(scene_->indices());
+  hk::Buffer vertexBuffer_ = createStorageBuffer_(scene_->vertices());
+  hk::Buffer normalBuffer_ = createStorageBuffer_(scene_->normals());
+  hk::Buffer uvBuffer_ = createStorageBuffer_(scene_->uvs());
 
   hk::SharedDeviceMemory localImageMemory_ = createLocalImageMemory_();
   hk::SharedDeviceMemory localBufferMemory_ = createLocalBufferMemory_();

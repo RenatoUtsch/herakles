@@ -142,7 +142,7 @@ layout(std430, binding = 8) buffer NormalsBuffer {
 };
 
 layout(std430, binding = 9) buffer UVBuffer {
-  vec2 UV[];
+  vec2 UVs[];
 };
 
 /* layout(std430, binding = 10) buffer TransformsBuffer { */

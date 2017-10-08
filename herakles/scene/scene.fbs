@@ -78,7 +78,7 @@ struct Mesh {
 
 struct Material {
   /// Reflectivity of the diffuse surface.
-  kd: vec3;
+  kd: vec4;
 }
 
 table Scene {
@@ -98,11 +98,11 @@ table Scene {
   indices: [uint];
 
   /// Triangle vertices.
-  vertices: [vec3];
+  vertices: [vec4];
 
   /// Per-vertex triangle normals. Shading normals will be computed by
   /// interpolating these normals.
-  normals: [vec3];
+  normals: [vec4];
 
   /// Per-vertex texture coordinates. If the mesh is textured, this array must
   /// be present.

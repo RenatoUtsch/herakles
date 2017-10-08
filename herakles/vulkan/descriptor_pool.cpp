@@ -16,6 +16,8 @@
 
 #include "herakles/vulkan/descriptor_pool.hpp"
 
+#include <glog/logging.h>
+
 namespace hk {
 
 DescriptorPool::DescriptorPool(const DescriptorSetLayout &descriptorSetLayout,
@@ -30,6 +32,7 @@ DescriptorPool::DescriptorPool(const DescriptorSetLayout &descriptorSetLayout,
       .setMaxSets(count);
 
   descriptorPool_ = device_.vkDevice().createDescriptorPoolUnique(createInfo);
+  LOG(INFO) << "Created descriptor pool";
 }
 
 std::vector<vk::DescriptorPoolSize> DescriptorPool::createPoolSizes_(

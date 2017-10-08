@@ -205,6 +205,7 @@ cc_library(
     copts = HERAKLES_CPP_COPTS,
     deps = [
         ":surface",
+        "//herakles/scene",
         "//third_party:glm",
     ],
 )

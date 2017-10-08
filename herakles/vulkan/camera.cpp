@@ -32,14 +32,14 @@ CameraManager::CameraManager(const Surface &surface, float moveSpeed,
   glfwGetCursorPos(surface_.window(), &lastMouseX_, &lastMouseY_);
 }
 
-bool CameraManager::update(Camera &camera, float deltaTime) {
+bool CameraManager::update(PinholeCamera &camera, float deltaTime) {
   bool changed = false;
   changed |= mouseUpdate_(camera, deltaTime);
   changed |= keyboardUpdate_(camera, deltaTime);
   return changed;
 }
 
-bool CameraManager::mouseUpdate_(Camera &camera, float deltaTime) {
+bool CameraManager::mouseUpdate_(PinholeCamera &camera, float deltaTime) {
   double xpos, ypos;
   glfwGetCursorPos(surface_.window(), &xpos, &ypos);
   if (glm::abs(lastMouseX_ - xpos) < glm::epsilon<double>() &&
@@ -66,7 +66,7 @@ bool CameraManager::mouseUpdate_(Camera &camera, float deltaTime) {
   return true;
 }
 
-bool CameraManager::keyboardUpdate_(Camera &camera, float deltaTime) {
+bool CameraManager::keyboardUpdate_(PinholeCamera &camera, float deltaTime) {
   bool changed = false;
 
   if (glfwGetKey(surface_.window(), GLFW_KEY_UP) == GLFW_PRESS) {

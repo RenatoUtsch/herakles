@@ -71,8 +71,10 @@ const char *RendererName = "Herakles Renderer";
 const uint32_t RendererVersion = VK_MAKE_VERSION(0, 0, 0);
 
 struct UniformBufferObject {
-  hk::Camera camera;
+  hk::PinholeCamera camera;
   uint32_t frameCount = 0;
+
+  UniformBufferObject(hk::PinholeCamera &&camera) : camera(camera) {}
 };
 
 std::vector<uint8_t> readFile(const std::string &filename) {
@@ -102,7 +104,8 @@ class Renderer {
                  fullscreen),
         pipeline_(device_,
                   hk::Shader(shaderFilename, shaderEntryPoint, device_),
-                  descriptorSetLayout_) {
+                  descriptorSetLayout_),
+        ubo_(scene_->camera()) {
     logSceneStats_();
     initializeGPUData_();
   }

@@ -41,12 +41,19 @@ struct mat4 {
   d: vec4;
 }
 
+/// Represents a pinhole camera.
 struct PinholeCamera {
+  /// Initial position of the camera.
   position: vec3;
+
+  /// Field of view of the camera.
   fov: float;
+
+  /// Unit direction vector of the camera.
   direction: vec3;
+
+  /// Unit up vector of the camera.
   up: vec3;
-  right: vec3;
 }
 
 /// Represents an area light.
@@ -82,6 +89,8 @@ struct Material {
 }
 
 table Scene {
+  camera: PinholeCamera;
+
   /// Area lights.
   areaLights: [AreaLight];
 

@@ -20,6 +20,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 
+#include "herakles/scene/scene_generated.h"
 #include "herakles/vulkan/surface.hpp"
 
 namespace hk {
@@ -30,22 +31,30 @@ namespace hk {
  * The format of this struct might change with time, but the names of the
  * variables will not be changed.
  */
-struct Camera {
+struct PinholeCamera {
   /// Position of the camera.
-  // glm::vec3 position = {50, 52, 169.927};
-  glm::vec3 position = {0, 1, 2.615};
+  glm::vec3 position;
 
   /// Field of view.
-  float fov = 1.24f;
+  float fov;
 
   /// Direction of the camera.
-  alignas(16) glm::vec3 direction = {0, 0, -1};
+  alignas(16) glm::vec3 direction;
 
   /// Up vector of the camera.
-  alignas(16) glm::vec3 up = {0, 1, 0};
+  alignas(16) glm::vec3 up;
 
   /// Right vector of the camera.
   alignas(16) glm::vec3 right = glm::cross(direction, up);
+
+  PinholeCamera() = default;
+  PinholeCamera(const hk::scene::PinholeCamera *camera)
+      : position(camera->position().x(), camera->position().y(),
+                 camera->position().z()),
+        fov(camera->fov()),
+        direction(camera->direction().x(), camera->direction().y(),
+                  camera->direction().z()),
+        up(camera->up().x(), camera->up().y(), camera->up().z()) {}
 };
 
 /**
@@ -77,14 +86,14 @@ class CameraManager {
    *   function was called.
    * @return If there was any change in the camera position.
    */
-  bool update(Camera &camera, float deltaTime);
+  bool update(PinholeCamera &camera, float deltaTime);
 
  private:
   /// Updates the mouse. Returns if there was an update.
-  bool mouseUpdate_(Camera &camera, float deltaTime);
+  bool mouseUpdate_(PinholeCamera &camera, float deltaTime);
 
   /// Updates the keyboard. Returns if there was an update.
-  bool keyboardUpdate_(Camera &camera, float deltaTime);
+  bool keyboardUpdate_(PinholeCamera &camera, float deltaTime);
 
   const Surface &surface_;
   float moveSpeed_;

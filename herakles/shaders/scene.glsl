@@ -111,7 +111,7 @@ struct Interaction {
 };
 
 layout(binding = 0, rgba32f) uniform restrict image2D Image;
-layout(binding = 1, r32ui) uniform restrict uimage2D Seeds;
+layout(binding = 1, rg32ui) uniform restrict uimage2D Seeds;
 layout(binding = 2, std140) uniform restrict readonly UBO {
   PinholeCamera Camera;
   uint FrameCount;

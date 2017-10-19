@@ -307,7 +307,7 @@ class Renderer {
     auto image = hk::Image(
         device_, swapchain_.width(), swapchain_.height(),
         vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst,
-        vk::Format::eR32Uint);
+        vk::Format::eR32G32Uint);
 
     device_.submitOneTimeComputeCommands(
         [&image](const vk::CommandBuffer &commandBuffer) {
@@ -450,8 +450,8 @@ class Renderer {
   void initializeSeeds_(const hk::Buffer &stagingBuffer) {
     std::random_device randomDevice;
     std::mt19937 rng(randomDevice());
-    std::uniform_int_distribution<uint32_t> distribution;
-    std::vector<uint32_t> randomNumbers(swapchain_.width() *
+    std::uniform_int_distribution<uint64_t> distribution;
+    std::vector<uint64_t> randomNumbers(swapchain_.width() *
                                         swapchain_.height());
 
     for (auto &n : randomNumbers) {

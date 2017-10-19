@@ -28,7 +28,7 @@ struct Sphere {
 
 layout(local_size_x = 32, local_size_y = 32) in;
 layout(binding = 0, rgba32f) uniform restrict image2D gImage;
-layout(binding = 1, r32ui) uniform restrict uimage2D gSeeds;
+layout(binding = 1, rg32ui) uniform restrict uimage2D gSeeds;
 layout(binding = 2, std140) uniform UniformBufferObject {
   Camera unusedCamera;
   uint frameCount;
@@ -174,7 +174,7 @@ vec3 radiance(Ray ray) {
 
 void main() {
   const ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
-  randInit(imageLoad(gSeeds, pixelPos).x);
+  randInit(imageLoad(gSeeds, pixelPos).xy);
 
   const vec2 resolution = imageSize(gImage);
   const vec2 pixelIndex = vec2(gl_GlobalInvocationID.xy);
@@ -201,5 +201,5 @@ void main() {
 
   color = clamp(color, 0.0f, 1.0f);
   imageStore(gImage, pixelPos, vec4(color, 1.0f));
-  imageStore(gSeeds, pixelPos, uvec4(randSeed()));
+  imageStore(gSeeds, pixelPos, uvec4(randState(), 0, 0));
 }

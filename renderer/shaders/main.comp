@@ -26,7 +26,7 @@ layout(local_size_x = 32, local_size_y = 32) in;
 
 void main() {
   const ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
-  randInit(imageLoad(Seeds, pixelPos).x);
+  randInit(imageLoad(Seeds, pixelPos).xy);
 
   const vec2 resolution = imageSize(Image);
   const vec2 pixelIndex = vec2(gl_GlobalInvocationID.xy);
@@ -53,5 +53,5 @@ void main() {
 
   color = clamp(color, 0.0f, 1.0f);
   imageStore(Image, pixelPos, vec4(color, 1.0f));
-  imageStore(Seeds, pixelPos, uvec4(randSeed()));
+  imageStore(Seeds, pixelPos, uvec4(randState(), 0, 0));
 }

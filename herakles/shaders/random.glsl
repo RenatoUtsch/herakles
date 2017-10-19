@@ -25,62 +25,56 @@
 #ifndef HERAKLES_SHADERS_RANDOM_GLSL
 #define HERAKLES_SHADERS_RANDOM_GLSL
 
+#extension GL_ARB_gpu_shader5 : require
+
 /// Maximum number representable by an uint.
-const uint UINT_MAX = 4294967295;
+const uint UINT_MAX = 4294967295U;
 
-/// Seed used by the random algorithms in this module.
-uint RandSeed_;
+/// Multiplication parameter used in the RNG algorithm.
+const uint RNG_PARAM_ = 4294883355U;
 
-/**
- * Generates uniformly distributed random integers in the range [0, UINT_MAX].
- * Taken from:
- * http://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
- *
- * TODO(renatoutsch): this function is no good at all. Find a way to generate
- * native floating point numbers with a good prng with uniformly distributed
- * numbers. Maybe a good idea:
- * https://math.stackexchange.com/questions/337782/pseudo-random-number-generation-on-the-gpu
- * https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
- * http://cas.ee.ic.ac.uk/people/dt10/research/rngs-gpu-mwc64x.html
- * http://www0.cs.ucl.ac.uk/staff/ucacbbl/ftp/papers/langdon_2009_CIGPU.pdf
- *
- * @param seed Seed to use to generate the next unsigned integer.
- * @return The next unsigned integer from the hash algorithm, can be used again
- *   as seed in a next call.
- */
-uint wangHash_(uint seed) {
-    seed = (seed ^ 61) ^ (seed >> 16);
-    seed *= 9;
-    seed = seed ^ (seed >> 4);
-    seed *= 0x27d4eb2d;
-    seed = seed ^ (seed >> 15);
-    return seed;
-}
+/// State used by the random algorithms in this module. Must be initialized with
+/// a seed by calling randInit().
+uvec2 RandState_;
 
 /**
- * Initializes the random number generator with an unsigned integer seed.
+ * Initializes the random number generator with a 64 bits unsigned integer seed.
  * Ideally, this seed should come from random numbers generated from good
  * pseudo-random algorithms in the CPU.
  * @param seed Seed to be used in the random algorithms from this module.
  */
-void randInit(uint seed) {
-  RandSeed_ = seed;
+void randInit(uvec2 seed) {
+  RandState_ = seed;
 }
 
 /**
  * Returns the current seed to be saved for a next shader invocation.
  */
-uint randSeed() {
-  return RandSeed_;
+uvec2 randState() {
+  return RandState_;
 }
 
 /**
- * Generates a random unsigned integer in the range [0, UINT_MAX].
- * Ensure randInit() is called before calling this function.
+ * Generates uniformly distributed random integers in the range [0, UINT_MAX].
+ * The algorithm used is the MWC64X, taken from:
+ * http://cas.ee.ic.ac.uk/people/dt10/research/rngs-gpu-mwc64x.html
+ *
+ * Be sure to have called randInit() before calling this function.
+ *
+ * @return The next unsigned integer from the RNG.
  */
 uint urand() {
-  RandSeed_ = wangHash_(RandSeed_);
-  return RandSeed_;
+  const uint result = RandState_.x ^ RandState_.y;  // Calculate the result.
+
+  uint lsb, msb;
+  umulExtended(RandState_.x, RNG_PARAM_, msb, lsb);  // Step the RNG.
+
+  // Pack the state back up.
+  RandState_.x = lsb + RandState_.y; 
+  RandState_.y = msb + (RandState_.x < RandState_.y ?
+                        RandState_.x : RandState_.y);
+
+  return result;
 }
 
 /**

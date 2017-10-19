@@ -32,10 +32,10 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 
+#include "herakles/scene/camera.hpp"
 #include "herakles/scene/scene_generated.h"
 #include "herakles/vulkan/allocator.hpp"
 #include "herakles/vulkan/buffer.hpp"
-#include "herakles/vulkan/camera.hpp"
 #include "herakles/vulkan/descriptor_pool.hpp"
 #include "herakles/vulkan/descriptor_set.hpp"
 #include "herakles/vulkan/descriptor_set_layout.hpp"

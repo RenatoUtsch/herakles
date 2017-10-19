@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef HERAKLES_HERAKLES_VULKAN_CAMERA_HPP
-#define HERAKLES_HERAKLES_VULKAN_CAMERA_HPP
+#ifndef HERAKLES_HERAKLES_SCENE_CAMERA_HPP
+#define HERAKLES_HERAKLES_SCENE_CAMERA_HPP
 
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
@@ -107,4 +107,4 @@ class CameraManager {
 
 }  // namespace hk
 
-#endif  // !HERAKLES_HERAKLES_VULKAN_CAMERA_HPP
+#endif  // !HERAKLES_HERAKLES_SCENE_CAMERA_HPP

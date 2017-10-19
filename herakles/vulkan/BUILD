@@ -199,18 +199,6 @@ cc_library(
 )
 
 cc_library(
-    name = "camera",
-    srcs = ["camera.cpp"],
-    hdrs = ["camera.hpp"],
-    copts = HERAKLES_CPP_COPTS,
-    deps = [
-        ":surface",
-        "//herakles/scene",
-        "//third_party:glm",
-    ],
-)
-
-cc_library(
     name = "utils",
     srcs = ["utils.cpp"],
     hdrs = ["utils.hpp"],

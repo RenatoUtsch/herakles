@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "herakles/vulkan/camera.hpp"
+#include "camera.hpp"
 
 #include <GLFW/glfw3.h>
 

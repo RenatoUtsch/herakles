@@ -20,6 +20,18 @@ load(
 
 package(default_visibility = ["//visibility:public"])
 
+cc_library(
+    name = "camera",
+    srcs = ["camera.cpp"],
+    hdrs = ["camera.hpp"],
+    copts = HERAKLES_CPP_COPTS,
+    deps = [
+        ":scene",
+        "//herakles/vulkan:surface",
+        "//third_party:glm",
+    ],
+)
+
 cc_flatbuffer_library(
     name = "scene",
     srcs = ["scene.fbs"],

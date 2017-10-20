@@ -24,7 +24,7 @@
 #include "random.glsl"
 #include "scene.glsl"
 
-/// Spawns a ray from an intersection so that it won't be intesecteded again.
+/// Spawns a ray from an intersection so that it won't be intersected again.
 Ray spawnRay(const Interaction isect, const vec3 direction) {
   return Ray(isect.point + isect.normal * 1e-6, direction);
 }
@@ -65,6 +65,13 @@ bool intersectsTriangle(const Ray ray, const uint begin, out float t,
 
   t = dot(v0v2, qvec) * invDet;
   return true;
+}
+
+/*
+ * Returns if the given bounding box is intersected by the given ray.
+ */
+bool intersectsBoundingBox(const Ray ray, const uint begin) {
+  return false;
 }
 
 /// Ray-scene intersection.

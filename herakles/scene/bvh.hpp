@@ -33,10 +33,12 @@ class BVHNode {
    */
   BVHNode(BVHNode *leaf1, BVHNode *leaf2, uint16_t splitAxis)
       : bounds_(leaf1->bounds() + leaf2->bounds()),
-        children_({leaf1, leaf2}),
-        numPrimitives(0),
+        numPrimitives_(0),
         splitAxis_(splitAxis),
-        primitivesOffset_(0) {}
+        primitivesOffset_(0) {
+    children_[0] = leaf1;
+    children_[1] = leaf2;
+  }
 
   /**
    * Builds a leaf BVH node by specifying the enclosed primitives.
@@ -44,10 +46,11 @@ class BVHNode {
   BVHNode(const Bounds3f &bounds, uint16_t numPrimitives,
           uint32_t primitivesOffset)
       : bounds_(bounds),
-        children_({nullptr, nullptr}),
         numPrimitives_(numPrimitives),
         splitAxis_(0),
-        primitivesOffset_(primitiveOffset) {}
+        primitivesOffset_(primitivesOffset) {
+    children_[0] = children_[1] = nullptr;
+  }
 
  private:
   /// Bounding box of the node.
@@ -77,7 +80,7 @@ class BVHNode {
  */
 struct LinearBVHNode {
   /// First point that represents the minimum of the bounding box.
-  glm::vec3 min;
+  glm::vec3 minPoint;
 
   /// Number of primitives in the node. If 0, the node is an interior node, and
   /// if > 0, the node is a leaf node.
@@ -90,7 +93,7 @@ struct LinearBVHNode {
   uint16_t axis;
 
   /// Second point that represents the maximum of the bounding box.
-  glm::vec3 max;
+  glm::vec3 maxPoint;
 
   union {
     /// If it's a leaf node, the offset into the primitives array.

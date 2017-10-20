@@ -93,6 +93,42 @@ struct Material {
 };
 
 /**
+ * Represents a single BVH node in the GPU.
+ */
+struct BVHNode {
+  /// First, minimum point in the BVH's bounding box.
+  vec3 minPoint;
+
+  /// 2 16bit integers backed into one variable. The number of primitives in the
+  /// BVH node is packed into the first 16 bits and the split axis in the second
+  /// 16 bits. Use unpackNumPrimitivesAndAxis() to unpack this value.
+  /// If numPrimitives is 0, this is an internal node, otherwise it's a leaf
+  /// node.
+  uint packedNumPrimitivesAndAxis;
+
+  /// Second, maximum point in the BVH's bounding box.
+  vec3 maxPoint;
+
+  /// Union (at least in C++) of the primitivesOffset and secondChildOffset.
+  /// If this is a leaf node, this is the index to the first primitive in the
+  /// primitives array.
+  /// If this is an internal node, this is the index to the second child of this
+  /// node (the first child is the next element in the array).
+  uint primitivesOrSecondChildOffset;
+};
+
+/// Unpacks the numPrimitives and axis elements of a BVHNode.
+/// This function assumes a Little Endian CPU.
+void unpackNumPrimitivesAndAxis(const BVHNode node, out uint numPrimitives,
+                                out uint axis) {
+  // numPrimitives is in the first 16 bits.
+  numPrimitives = node.packedNumPrimitivesAndAxis & 0x0000FFFF;
+
+  // axis is in the last 16 bits.
+  axis = node.packedNumPrimitivesAndAxis >> 16;
+}
+
+/**
  * Represents an interaction with a triangle point.
  */
 struct Interaction {

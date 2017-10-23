@@ -21,6 +21,26 @@ load(
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "bounds",
+    hdrs = ["bounds.hpp"],
+    copts = HERAKLES_CPP_COPTS,
+    deps = [
+        "//third_party:glm",
+    ],
+)
+
+cc_library(
+    name = "bvh",
+    srcs = ["bvh.cpp"],
+    hdrs = ["bvh.hpp"],
+    deps = [
+        ":bounds",
+        ":scene",
+        "//third_party:glm",
+    ],
+)
+
+cc_library(
     name = "camera",
     srcs = ["camera.cpp"],
     hdrs = ["camera.hpp"],

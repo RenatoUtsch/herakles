@@ -18,55 +18,27 @@
 #define HERAKLES_HERAKLES_SCENE_BVH_HPP
 
 #include <cstdint>
+#include <utility>
+#include <vector>
+
 #include <glm/glm.hpp>
+
+#include "herakles/scene/bounds.hpp"
+#include "herakles/scene/scene_generated.h"
 
 namespace hk {
 
 /**
- * Pointer-based representation of a node of the BVH.
- * Used to build the BVH, and later converted to the array representation.
+ * Representation of a triangle used in the BVH.
  */
-class BVHNode {
- public:
-  /**
-   * Builds an internal BVH node enclosing the two given leaf nodes.
-   */
-  BVHNode(BVHNode *leaf1, BVHNode *leaf2, uint16_t splitAxis)
-      : bounds_(leaf1->bounds() + leaf2->bounds()),
-        numPrimitives_(0),
-        splitAxis_(splitAxis),
-        primitivesOffset_(0) {
-    children_[0] = leaf1;
-    children_[1] = leaf2;
-  }
+struct BVHTriangle {
+  /// ID of this triangle's mesh.
+  uint32_t meshID;
 
-  /**
-   * Builds a leaf BVH node by specifying the enclosed primitives.
-   */
-  BVHNode(const Bounds3f &bounds, uint16_t numPrimitives,
-          uint32_t primitivesOffset)
-      : bounds_(bounds),
-        numPrimitives_(numPrimitives),
-        splitAxis_(0),
-        primitivesOffset_(primitivesOffset) {
-    children_[0] = children_[1] = nullptr;
-  }
+  /// Index of this triangle in the indices array.
+  uint32_t index;
 
- private:
-  /// Bounding box of the node.
-  Bounds3f bounds_;
-
-  /// Children of the node. Nullptr if is a leaf node.
-  BVHNode *children_[2];
-
-  /// Number of primitives in the leaf node. If 0, is an internal node.
-  uint16_t numPrimitives_;
-
-  /// Axis into which the node was split.
-  uint16_t splitAxis_;
-
-  /// Offset into the primitives array for the first primitive of the leaf node.
-  uint32_t primitivesOffset_;
+  BVHTriangle(uint32_t meshID, uint32_t index) : meshID(meshID), index(index) {}
 };
 
 /**
@@ -75,18 +47,18 @@ class BVHNode {
  * cache-aligned in the GPU for maximum performance.
  *
  * For an interior node, it's first child is always the next element in the
- * array, so the first child's index doesn't need to be stored, only the second
- * child's.
+ * array, so the first child's index doesn't need to be stored, only the
+ * second child's.
  */
 struct LinearBVHNode {
   /// First point that represents the minimum of the bounding box.
   glm::vec3 minPoint;
 
-  /// Number of primitives in the node. If 0, the node is an interior node, and
+  /// Number of triangles in the node. If 0, the node is an interior node, and
   /// if > 0, the node is a leaf node.
-  uint16_t numPrimitives;
+  uint16_t numTriangles;
 
-  /// Coordinate axis the primitives were partitioned. This is used to traverse
+  /// Coordinate axis the triangles were partitioned. This is used to traverse
   /// the tree in front-to-back order and skip bounding box intersections if a
   /// closer intersection has already been found. Only meaningful if the node is
   /// an interior node.
@@ -96,13 +68,20 @@ struct LinearBVHNode {
   glm::vec3 maxPoint;
 
   union {
-    /// If it's a leaf node, the offset into the primitives array.
-    uint32_t primitivesOffset;
+    /// If it's a leaf node, the offset into the triangles array.
+    uint32_t trianglesOffset;
 
     /// If it's an internal node, the offset to the second child.
     uint32_t secondChildOffset;
   };
 };
+
+/**
+ * Builds a Bounding Volume Hierarchy from the given scene.
+ * @return a pair containing the BVH tree vector and the BVH triangle vector.
+ */
+std::pair<std::vector<LinearBVHNode>, std::vector<BVHTriangle>> buildBVH(
+    const hk::scene::Scene &scene);
 
 }  // namespace hk
 

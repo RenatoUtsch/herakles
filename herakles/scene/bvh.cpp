@@ -227,12 +227,11 @@ std::vector<BVHNode> flattenBVH_(const BVHBuildNode &root, size_t numNodes) {
   std::stack<std::tuple<const BVHBuildNode &, BVHNode *>> s;
 
   s.emplace(root, nullptr);
-  size_t offset = 0;
-  while (!s.empty()) {
+  for (size_t offset = 0; !s.empty(); ++offset) {
     const auto[node, parentPtr] = s.top();
     s.pop();
 
-    auto &linearNode = nodes[offset++];
+    auto &linearNode = nodes[offset];
     linearNode.minPoint = node.bounds.minPoint;
     linearNode.maxPoint = node.bounds.maxPoint;
     linearNode.numTriangles = node.numTriangles;
@@ -259,6 +258,11 @@ std::vector<BVHNode> flattenBVH_(const BVHBuildNode &root, size_t numNodes) {
 
 }  // namespace
 
+std::ostream &operator<<(std::ostream &out, const glm::vec3 &v) {
+  out << "[" << v.x << ", " << v.y << ", " << v.z << "]";
+  return out;
+}
+
 namespace hk {
 
 BVHData buildBVH(const Scene *scene) {
@@ -278,11 +282,15 @@ BVHData buildBVH(const Scene *scene) {
     if (node.numTriangles > 0) {
       LOG(INFO) << "offset: " << i << " | numTriangles: " << node.numTriangles
                 << " | trianglesOffset: " << node.trianglesOffset
-                << " | begin: " << orderedTriangles[node.trianglesOffset].begin;
+                << " | begin: " << orderedTriangles[node.trianglesOffset].begin
+                << " | minPoint: " << node.minPoint
+                << " | maxPoint: " << node.maxPoint;
     } else {
       LOG(INFO) << "offset: " << i << " | numTriangles: " << node.numTriangles
                 << " | secondChildOffset: " << node.secondChildOffset
-                << " | splitAxis: " << node.splitAxis;
+                << " | splitAxis: " << node.splitAxis
+                << " | minPoint: " << node.minPoint
+                << " | maxPoint: " << node.maxPoint;
     }
   }
 

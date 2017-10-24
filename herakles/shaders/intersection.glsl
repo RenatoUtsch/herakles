@@ -98,7 +98,7 @@ bool intersectsBoundingBox(
 
 /// Ray-scene intersection.
 /// Returns the interaction at intersection point.
-bool intersectsSceneBBox(const Ray ray, out Interaction isect) {
+bool intersectsScene(const Ray ray, out Interaction isect) {
   const vec3 invDir = 1.0f / ray.direction;
   const bvec3 dirIsNeg = bvec3(invDir.x < 0, invDir.y < 0, invDir.z < 0);
   bool hit = false;
@@ -113,13 +113,9 @@ bool intersectsSceneBBox(const Ray ray, out Interaction isect) {
   uint toVisitOffset = 0, currentNodeIndex = 0;
   uint nodesToVisit[64];
   while (true) {
-    const BVHNode node = BVHNodes[7];//[currentNodeIndex];
+    const BVHNode node = BVHNodes[currentNodeIndex];
     uint numTriangles, splitAxis;
     unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
-
-    if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
-                              dirIsNeg)) return true;
-                              return false;
 
     // Check ray against BVH node.
     if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
@@ -156,48 +152,6 @@ bool intersectsSceneBBox(const Ray ray, out Interaction isect) {
   }
 
   if (!hit) {
-    return false;
-  }
-
-  const vec3 normal = Normals[Indices[begin]] * st.s
-                    + Normals[Indices[begin + 1]] * st.t
-                    + Normals[Indices[begin + 2]] * (1.0f - st.s - st.t);
-  const bool backface = dot(normal, ray.direction) <= -EPSILON ? false : true;
-
-  isect = Interaction(
-      ray.origin + ray.direction * t,
-      meshID,
-      backface ? normal * -1.0f : normal,
-      backface);
-
-  return true;
-}
-
-bool intersectsScene(const Ray ray, out Interaction isect) {
-  bool intersected = false;
-  float t = INF;
-  uint meshID = 0;
-  uint begin = 0;
-  vec2 st;
-
-  float currT;
-  vec2 currST;
-  const uint numMeshes = Meshes.length();
-  for (uint i = 0; i < numMeshes; ++i) {
-    const Mesh mesh = Meshes[i];
-    for (uint j = mesh.begin; j < mesh.end; j += 3) {
-      if (intersectsTriangle(ray, j, currT, currST) &&
-          currT <= t - EPSILON  && currT > EPSILON) {
-        intersected = true;
-        t = currT;
-        meshID = i;
-        begin = j;
-        st = currST;
-      }
-    }
-  }
-
-  if (!intersected) {
     return false;
   }
 

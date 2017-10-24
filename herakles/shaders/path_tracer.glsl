@@ -32,8 +32,7 @@ vec3 radiance(Ray ray) {
   vec3 beta = vec3(1.0f);
   Interaction isect;
   for (int depth = 0; depth < MAX_DEPTH; ++depth) {
-    if (intersectsSceneBBox(ray, isect)) return vec3(.3f);
-    if (!intersectsScene(ray, isect)) {
+    if (!intersectsSceneBBox(ray, isect)) {
       return vec3(0.0f);
     }
 

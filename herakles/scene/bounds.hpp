@@ -87,14 +87,41 @@ class Bounds3 {
   glm::vec3 diagonal() const { return maxPoint - minPoint; }
 
   /**
+   * Returns the surface area of the bounding box.
+   */
+  T surfaceArea() const {
+    const auto d = diagonal();
+    return 2 * (d.x * d.y + d.x * d.z + d.y * d.z);
+  }
+
+  /**
+   * Returns the volume of the bounding box.
+   */
+  T volume() const {
+    const auto d = diagonal();
+    return d.x * d.y * d.z;
+  }
+
+  /**
    * Returns the maximum extent axis of the bounding box.
    * 0 is the x axis, 1 the y axis and 2 the z axis.
    */
   int maximumExtentAxis() const {
-    const glm::vec3 d = diagonal();
+    const auto d = diagonal();
     if (d.x > d.y && d.x > d.z) return 0;
     if (d.y > d.z) return 1;
     return 2;
+  }
+
+  /**
+   * Returns the position of a point relative to the corners of the box.
+   */
+  glm::vec3 offset(const glm::vec3 &p) const {
+    glm::vec3 o = p - minPoint;
+    if (maxPoint.x > minPoint.x) o.x /= maxPoint.x - minPoint.x;
+    if (maxPoint.y > minPoint.y) o.y /= maxPoint.y - minPoint.y;
+    if (maxPoint.z > minPoint.z) o.z /= maxPoint.z - minPoint.z;
+    return o;
   }
 };
 

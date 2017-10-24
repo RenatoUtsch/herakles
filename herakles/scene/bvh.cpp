@@ -160,6 +160,115 @@ std::unique_ptr<BVHBuildNode> buildLeafNode(
 }
 
 /**
+ * Partitions BVH primitives into equally-sized subsets.
+ * @param dim The dimension along which triangles are being partitioned.
+ * @param start Start of the range to split.
+ * @param end One after end of the range to split.
+ * @param triangleInfos Vector to be partitioned in-place.
+ * Returns the split point.
+ */
+size_t equallySizedSplit_(int dim, size_t start, size_t end,
+                          std::vector<BVHTriangleInfo> &triangleInfos) {
+  // Partition primitives using equally-sized subsets.
+  const size_t mid = (start + end) / 2;
+  std::nth_element(&triangleInfos[start], &triangleInfos[mid],
+                   &triangleInfos[end - 1] + 1,
+                   [dim](const BVHTriangleInfo &a, const BVHTriangleInfo &b) {
+                     return a.centroid[dim] < b.centroid[dim];
+                   });
+  return mid;
+}
+
+// SAH constants.
+constexpr size_t NumBuckets = 12;
+constexpr size_t MaxTrianglesInNode = 1;
+const float IntersectionCost = 1.0f;
+const float TraversalCost = 1.0f;
+
+/**
+ * Buckets for approximate SAH.
+ */
+struct BucketInfo {
+  int count = 0;
+  Bounds3f bounds;
+};
+
+/**
+ * Partitions BVH primitives by following the Surface Area Heuristic (SAH).
+ * @param dim The dimension along which triangles are being partitioned.
+ * @param start Start of the range to split.
+ * @param end One after end of the range to split.
+ * @param numTriangles Number of triangles in the range.
+ * @param bounds Bounds of all primitives in the node.
+ * @param centroidBounds Bounds of the centroids.
+ * @param triangleInfos Vector to be partitioned in-place.
+ * @return the split point, or 0 if is to just create a leaf node with the
+ * node's triangles.
+ */
+size_t sahSplit_(int dim, size_t start, size_t end, size_t numTriangles,
+                 const Bounds3f &bounds, const Bounds3f &centroidBounds,
+                 std::vector<BVHTriangleInfo> &triangleInfos) {
+  // Initialize buckets.
+  BucketInfo buckets[NumBuckets];
+  for (size_t i = start; i < end; ++i) {
+    size_t b =
+        NumBuckets * centroidBounds.offset(triangleInfos[i].centroid)[dim];
+    if (b == NumBuckets) b = NumBuckets - 1;
+    CHECK_GE(b, 0);
+    CHECK_LT(b, NumBuckets);
+
+    ++buckets[b].count;
+    buckets[b].bounds += triangleInfos[i].bounds;
+  }
+
+  // Compute cost for splitting after each bucket.
+  float cost[NumBuckets - 1];
+  for (size_t i = 0; i < NumBuckets - 1; ++i) {
+    Bounds3f b0, b1;
+    int count0 = 0, count1 = 1;
+    for (size_t j = 0; j <= i; ++j) {
+      b0 += buckets[j].bounds;
+      count0 += buckets[j].count;
+    }
+    for (size_t j = i + 1; j < NumBuckets; ++j) {
+      b1 += buckets[j].bounds;
+      count1 += buckets[j].count;
+    }
+
+    cost[i] = TraversalCost +
+              (count0 * b0.surfaceArea() + count1 * b1.surfaceArea()) /
+                  bounds.surfaceArea();
+  }
+
+  // Find bucket to split that minimizes SAH metric.
+  float minCost = cost[0];
+  size_t minCostSplitBucket = 0;
+  for (size_t i = 1; i < NumBuckets - 1; ++i) {
+    if (cost[i] < minCost) {
+      minCost = cost[i];
+      minCostSplitBucket = i;
+    }
+  }
+
+  // Either create leaf ndoe or split primitives at selected SAH bucket.
+  const float leafCost = IntersectionCost * numTriangles;
+  if (numTriangles > MaxTrianglesInNode || minCost < leafCost) {
+    BVHTriangleInfo *pMid = std::partition(
+        &triangleInfos[start], &triangleInfos[end - 1] + 1,
+        [=](const BVHTriangleInfo &pi) {
+          size_t b = NumBuckets * centroidBounds.offset(pi.centroid)[dim];
+          if (b == NumBuckets) b = NumBuckets - 1;
+          CHECK_GE(b, 0);
+          CHECK_LT(b, NumBuckets);
+          return b <= minCostSplitBucket;
+        });
+    return pMid - &triangleInfos[0];
+  }
+
+  return 0;
+}
+
+/**
  * Builds a BVH tree using the Surface Area Heuristic.
  * @param triangles Triangles in the scene.
  * @param triangleInfos Vector of the same size of triangles
@@ -193,29 +302,28 @@ std::unique_ptr<BVHBuildNode> SAHBuild_(
 
   // If centroids are on the same position, return a leaf node.
   // Partitioning further doesn't produce good results.
-  const size_t mid = (start + end) / 2;
   if (centroidBounds.maxPoint[dim] == centroidBounds.minPoint[dim]) {
     return buildLeafNode(triangles, triangleInfos, bounds, start, end,
                          numTriangles, orderedTriangles);
   }
 
-  // Partition primitives using equally-sized subsets.
-  /* if (numTriangles <= 2) { */
-  std::nth_element(&triangleInfos[start], &triangleInfos[mid],
-                   &triangleInfos[end - 1] + 1,
-                   [dim](const BVHTriangleInfo &a, const BVHTriangleInfo &b) {
-                     return a.centroid[dim] < b.centroid[dim];
-                   });
-  /* } */
-
-  // Partition using approximate SAH.
-  // TODO(renatoutsch): implement SAH.
+  size_t splitPoint;
+  if (numTriangles <= 2) {
+    splitPoint = equallySizedSplit_(dim, start, end, triangleInfos);
+  } else {
+    splitPoint = sahSplit_(dim, start, end, numTriangles, bounds,
+                           centroidBounds, triangleInfos);
+    if (!splitPoint) {
+      return buildLeafNode(triangles, triangleInfos, bounds, start, end,
+                           numTriangles, orderedTriangles);
+    }
+  }
 
   return std::make_unique<BVHBuildNode>(
       dim,
-      SAHBuild_(triangles, triangleInfos, start, mid, totalNodes,
+      SAHBuild_(triangles, triangleInfos, start, splitPoint, totalNodes,
                 orderedTriangles),
-      SAHBuild_(triangles, triangleInfos, mid, end, totalNodes,
+      SAHBuild_(triangles, triangleInfos, splitPoint, end, totalNodes,
                 orderedTriangles));
 }
 

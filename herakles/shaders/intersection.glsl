@@ -70,12 +70,109 @@ bool intersectsTriangle(const Ray ray, const uint begin, out float t,
 /*
  * Returns if the given bounding box is intersected by the given ray.
  */
-bool intersectsBoundingBox(const Ray ray, const uint begin) {
-  return false;
+bool intersectsBoundingBox(
+    const Ray ray, const float rayTMax, const vec3 minPoint, const vec3 maxPoint,
+    const vec3 invDir, const bvec3 dirIsNeg) {
+  const vec3 boundsMin = vec3(dirIsNeg.x ? maxPoint.x : minPoint.x,
+                              dirIsNeg.y ? maxPoint.y : minPoint.y,
+                              dirIsNeg.z ? maxPoint.z : minPoint.z);
+  const vec3 boundsMax = vec3(dirIsNeg.x ? minPoint.x : maxPoint.x,
+                              dirIsNeg.y ? minPoint.y : maxPoint.y,
+                              dirIsNeg.z ? minPoint.z : maxPoint.z);
+
+  vec3 tMin = (boundsMin - ray.origin) * invDir;
+  vec3 tMax = (boundsMax - ray.origin) * invDir;
+
+  // Update tMax to ensure robust bounds intersection.
+  tMax *= 1.0f + 2.0f * GAMMA_3;
+
+  if (tMin.x > tMax.y || tMin.y > tMax.x) return false;
+  if (tMin.y > tMin.x) tMin.x = tMin.y;
+  if (tMax.y < tMax.x) tMax.x = tMax.y;
+  if (tMin.x > tMax.z || tMin.z > tMax.x) return false;
+  if (tMin.z > tMin.x) tMin.x = tMin.z;
+  if (tMax.z < tMax.x) tMax.x = tMax.z;
+
+  return tMin.x < rayTMax && tMax.x > EPSILON;
 }
 
 /// Ray-scene intersection.
 /// Returns the interaction at intersection point.
+bool intersectsSceneBBox(const Ray ray, out Interaction isect) {
+  const vec3 invDir = 1.0f / ray.direction;
+  const bvec3 dirIsNeg = bvec3(invDir.x < 0, invDir.y < 0, invDir.z < 0);
+  bool hit = false;
+  float t = INF;
+  uint meshID = 0;
+  uint begin = 0;
+  vec2 st;
+
+  float currT;
+  vec2 currST;
+
+  uint toVisitOffset = 0, currentNodeIndex = 0;
+  uint nodesToVisit[64];
+  while (true) {
+    const BVHNode node = BVHNodes[7];//[currentNodeIndex];
+    uint numTriangles, splitAxis;
+    unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
+
+    if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
+                              dirIsNeg)) return true;
+                              return false;
+
+    // Check ray against BVH node.
+    if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
+                              dirIsNeg)) {
+      if (numTriangles > 0) {
+        for (int i = 0; i < numTriangles; ++i) {
+          BVHTriangle triangle = BVHTriangles[node.trianglesOrSecondChildOffset
+                                              + i];
+          if (intersectsTriangle(ray, triangle.begin, currT, currST) &&
+              currT <= t - EPSILON && currT > EPSILON) {
+            hit = true;
+            t = currT;
+            meshID = triangle.meshID;
+            begin = triangle.begin;
+            st = currST;
+          }
+        }
+
+        if (toVisitOffset == 0) break;
+        currentNodeIndex = nodesToVisit[--toVisitOffset];
+      } else {
+        if (dirIsNeg[splitAxis]) {
+          nodesToVisit[toVisitOffset++] = currentNodeIndex + 1;
+          currentNodeIndex = node.trianglesOrSecondChildOffset;
+        } else {
+          nodesToVisit[toVisitOffset++] = node.trianglesOrSecondChildOffset;
+          currentNodeIndex = currentNodeIndex + 1;
+        }
+      }
+    } else {
+      if (toVisitOffset == 0) break;
+      currentNodeIndex = nodesToVisit[--toVisitOffset];
+    }
+  }
+
+  if (!hit) {
+    return false;
+  }
+
+  const vec3 normal = Normals[Indices[begin]] * st.s
+                    + Normals[Indices[begin + 1]] * st.t
+                    + Normals[Indices[begin + 2]] * (1.0f - st.s - st.t);
+  const bool backface = dot(normal, ray.direction) <= -EPSILON ? false : true;
+
+  isect = Interaction(
+      ray.origin + ray.direction * t,
+      meshID,
+      backface ? normal * -1.0f : normal,
+      backface);
+
+  return true;
+}
+
 bool intersectsScene(const Ray ray, out Interaction isect) {
   bool intersected = false;
   float t = INF;

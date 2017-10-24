@@ -33,10 +33,12 @@ cc_library(
     name = "bvh",
     srcs = ["bvh.cpp"],
     hdrs = ["bvh.hpp"],
+    copts = HERAKLES_CPP_COPTS,
     deps = [
         ":bounds",
         ":scene",
         "//third_party:glm",
+        "//third_party:glog",
     ],
 )
 

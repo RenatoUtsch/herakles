@@ -27,12 +27,16 @@
 
 // (u, v) = (s, t) for coordinates in Herakles.
 
+
 const uint NUM_SAMPLES = 5;
 const uint MAX_DEPTH = 4;
 
 const float EPSILON = 1e-7;
 const float INF = 1e20;
 const float M_PI = 3.14159265359f;
+
+#define GAMMA(n) (((n) * EPSILON) / (1.0f - (n) * EPSILON))
+const float GAMMA_3 = GAMMA(3.0f);
 
 /**
  * Represents a ray travelling through the scene.
@@ -93,39 +97,50 @@ struct Material {
 };
 
 /**
+ * Represents a triangle in the BVH.
+ */
+struct BVHTriangle {
+  /// ID of the triangle's mesh.
+  uint meshID;
+
+  /// Beginning of the triangle's indices.
+  uint begin;
+};
+
+/**
  * Represents a single BVH node in the GPU.
  */
 struct BVHNode {
   /// First, minimum point in the BVH's bounding box.
   vec3 minPoint;
 
-  /// 2 16bit integers backed into one variable. The number of primitives in the
+  /// 2 16bit integers backed into one variable. The number of triangles in the
   /// BVH node is packed into the first 16 bits and the split axis in the second
-  /// 16 bits. Use unpackNumPrimitivesAndAxis() to unpack this value.
-  /// If numPrimitives is 0, this is an internal node, otherwise it's a leaf
+  /// 16 bits. Use unpackNumTrianglesAndAxis() to unpack this value.
+  /// If numTriangles is 0, this is an internal node, otherwise it's a leaf
   /// node.
-  uint packedNumPrimitivesAndAxis;
+  uint packedNumTrianglesAndAxis;
 
   /// Second, maximum point in the BVH's bounding box.
   vec3 maxPoint;
 
-  /// Union (at least in C++) of the primitivesOffset and secondChildOffset.
-  /// If this is a leaf node, this is the index to the first primitive in the
-  /// primitives array.
+  /// Union (at least in C++) of the trianglesOffset and secondChildOffset.
+  /// If this is a leaf node, this is the index to the first triangle in the
+  /// triangles array.
   /// If this is an internal node, this is the index to the second child of this
   /// node (the first child is the next element in the array).
-  uint primitivesOrSecondChildOffset;
+  uint trianglesOrSecondChildOffset;
 };
 
-/// Unpacks the numPrimitives and axis elements of a BVHNode.
+/// Unpacks the numTriangles and axis elements of a BVHNode.
 /// This function assumes a Little Endian CPU.
-void unpackNumPrimitivesAndAxis(const BVHNode node, out uint numPrimitives,
+void unpackNumTrianglesAndAxis(const BVHNode node, out uint numTriangles,
                                 out uint axis) {
-  // numPrimitives is in the first 16 bits.
-  numPrimitives = node.packedNumPrimitivesAndAxis & 0x0000FFFF;
+  // numTriangles is in the first 16 bits.
+  numTriangles = node.packedNumTrianglesAndAxis & 0x0000FFFF;
 
   // axis is in the last 16 bits.
-  axis = node.packedNumPrimitivesAndAxis >> 16;
+  axis = node.packedNumTrianglesAndAxis >> 16;
 }
 
 /**
@@ -153,35 +168,43 @@ layout(binding = 2, std140) uniform restrict readonly UBO {
   uint FrameCount;
 };
 
-layout(std430, binding = 3) buffer AreaLightBuffer {
+layout(std430, binding = 3) buffer BVHNodeBuffer {
+  BVHNode BVHNodes[];
+};
+
+layout(std430, binding = 4) buffer BVHTriangleBuffer {
+  BVHTriangle BVHTriangles[];
+};
+
+layout(std430, binding = 5) buffer AreaLightBuffer {
   AreaLight AreaLights[];
 };
 
-layout(std430, binding = 4) buffer MeshesBuffer {
+layout(std430, binding = 6) buffer MeshesBuffer {
   Mesh Meshes[];
 };
 
-layout(std430, binding = 5) buffer MaterialsBuffer {
+layout(std430, binding = 7) buffer MaterialsBuffer {
   Material Materials[];
 };
 
-layout(std430, binding = 6) buffer IndicesBuffer {
+layout(std430, binding = 8) buffer IndicesBuffer {
   uint Indices[];
 };
 
-layout(std430, binding = 7) buffer VerticesBuffer {
+layout(std430, binding = 9) buffer VerticesBuffer {
   vec3 Vertices[];
 };
 
-layout(std430, binding = 8) buffer NormalsBuffer {
+layout(std430, binding = 10) buffer NormalsBuffer {
   vec3 Normals[];
 };
 
-layout(std430, binding = 9) buffer UVBuffer {
+layout(std430, binding = 11) buffer UVBuffer {
   vec2 UVs[];
 };
 
-/* layout(std430, binding = 10) buffer TransformsBuffer { */
+/* layout(std430, binding = 12) buffer TransformsBuffer { */
 /*   mat4 Transforms[]; */
 /* }; */
 

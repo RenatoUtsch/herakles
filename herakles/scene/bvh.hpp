@@ -35,10 +35,10 @@ struct BVHTriangle {
   /// ID of this triangle's mesh.
   uint32_t meshID;
 
-  /// Index of this triangle in the indices array.
-  uint32_t index;
+  /// Beginning of this triangle in the indices array.
+  uint32_t begin;
 
-  BVHTriangle(uint32_t meshID, uint32_t index) : meshID(meshID), index(index) {}
+  BVHTriangle(uint32_t meshID, uint32_t begin) : meshID(meshID), begin(begin) {}
 };
 
 /**
@@ -50,7 +50,7 @@ struct BVHTriangle {
  * array, so the first child's index doesn't need to be stored, only the
  * second child's.
  */
-struct LinearBVHNode {
+struct BVHNode {
   /// First point that represents the minimum of the bounding box.
   glm::vec3 minPoint;
 
@@ -62,7 +62,7 @@ struct LinearBVHNode {
   /// the tree in front-to-back order and skip bounding box intersections if a
   /// closer intersection has already been found. Only meaningful if the node is
   /// an interior node.
-  uint16_t axis;
+  uint16_t splitAxis;
 
   /// Second point that represents the maximum of the bounding box.
   glm::vec3 maxPoint;
@@ -76,12 +76,21 @@ struct LinearBVHNode {
   };
 };
 
+/// Struct that stores the BVH data.
+struct BVHData {
+  std::vector<BVHNode> nodes;
+
+  std::vector<BVHTriangle> triangles;
+
+  BVHData(std::vector<BVHNode> &&nodes, std::vector<BVHTriangle> &&triangles)
+      : nodes(nodes), triangles(triangles) {}
+};
+
 /**
  * Builds a Bounding Volume Hierarchy from the given scene.
  * @return a pair containing the BVH tree vector and the BVH triangle vector.
  */
-std::pair<std::vector<LinearBVHNode>, std::vector<BVHTriangle>> buildBVH(
-    const hk::scene::Scene &scene);
+BVHData buildBVH(const hk::scene::Scene *scene);
 
 }  // namespace hk
 

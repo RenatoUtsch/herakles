@@ -18,6 +18,7 @@
 #define HERAKLES_HERAKLES_SCENE_BOUNDS_HPP
 
 #include <algorithm>
+#include <limits>
 
 #include <glm/glm.hpp>
 
@@ -36,6 +37,16 @@ class Bounds3 {
   glm::vec3 maxPoint;
 
   /**
+   * Invalid empty bounds.
+   */
+  Bounds3() {
+    const T minNum = std::numeric_limits<T>::lowest();
+    const T maxNum = std::numeric_limits<T>::max();
+    minPoint = glm::vec3(maxNum, maxNum, maxNum);
+    maxPoint = glm::vec3(minNum, minNum, minNum);
+  }
+
+  /**
    * Initializes the bounding box with the two given points.
    */
   Bounds3(const glm::vec3 &p1, const glm::vec3 &p2)
@@ -43,6 +54,48 @@ class Bounds3 {
                  std::min(p1.z, p2.z)),
         maxPoint(std::max(p1.x, p2.x), std::max(p1.y, p2.y),
                  std::max(p1.z, p2.z)) {}
+
+  /**
+   * Adds a bounding box to this one.
+   */
+  Bounds3<T> &operator+=(const Bounds3<T> &other) {
+    minPoint.x = std::min(minPoint.x, other.minPoint.x);
+    minPoint.y = std::min(minPoint.y, other.minPoint.y);
+    minPoint.z = std::min(minPoint.z, other.minPoint.z);
+    maxPoint.x = std::max(maxPoint.x, other.maxPoint.x);
+    maxPoint.y = std::max(maxPoint.y, other.maxPoint.y);
+    maxPoint.z = std::max(maxPoint.z, other.maxPoint.z);
+    return *this;
+  }
+
+  /**
+   * Adds a point to this bounding box.
+   */
+  Bounds3<T> &operator+=(const glm::vec3 &p) {
+    minPoint.x = std::min(minPoint.x, p.x);
+    minPoint.y = std::min(minPoint.y, p.y);
+    minPoint.z = std::min(minPoint.z, p.z);
+    maxPoint.x = std::max(maxPoint.x, p.x);
+    maxPoint.y = std::max(maxPoint.y, p.y);
+    maxPoint.z = std::max(maxPoint.z, p.z);
+    return *this;
+  }
+
+  /**
+   * Returns the vector from the minimum point to the maximum point.
+   */
+  glm::vec3 diagonal() const { return maxPoint - minPoint; }
+
+  /**
+   * Returns the maximum extent axis of the bounding box.
+   * 0 is the x axis, 1 the y axis and 2 the z axis.
+   */
+  int maximumExtentAxis() const {
+    const glm::vec3 d = diagonal();
+    if (d.x > d.y && d.x > d.z) return 0;
+    if (d.y > d.z) return 1;
+    return 2;
+  }
 };
 
 /// Float version of the bounding box.

@@ -32,6 +32,7 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 
+#include "herakles/scene/bvh.hpp"
 #include "herakles/scene/camera.hpp"
 #include "herakles/scene/scene_generated.h"
 #include "herakles/vulkan/allocator.hpp"
@@ -192,7 +193,7 @@ class Renderer {
   }
 
   hk::DescriptorSetLayout createDescriptorSetLayout_() {
-    const size_t numBindings = 10;
+    const size_t numBindings = 12;
     std::vector<vk::DescriptorSetLayoutBinding> bindings(numBindings);
     bindings[0]
         .setBinding(0)
@@ -337,6 +338,11 @@ class Renderer {
     return createStorageBuffer_(vec->size() * sizeof(T));
   }
 
+  template <typename T>
+  hk::Buffer createStorageBuffer_(const std::vector<T> &vec) {
+    return createStorageBuffer_(vec.size() * sizeof(T));
+  }
+
   /// Staging buffer for the given buffer.
   hk::Buffer createStagingBuffer_(const hk::Buffer &buffer) {
     return hk::Buffer(device_, buffer.requestedSize(),
@@ -353,8 +359,9 @@ class Renderer {
     LOG(INFO) << "Allocating local buffer memory";
     return hk::allocateMemory(
         device_, vk::MemoryPropertyFlagBits::eDeviceLocal,
-        {uboBuffer_, areaLightBuffer_, meshBuffer_, materialBuffer_,
-         indexBuffer_, vertexBuffer_, normalBuffer_, uvBuffer_});
+        {uboBuffer_, bvhNodeBuffer_, bvhTriangleBuffer_, areaLightBuffer_,
+         meshBuffer_, materialBuffer_, indexBuffer_, vertexBuffer_,
+         normalBuffer_, uvBuffer_});
   }
 
   hk::SharedDeviceMemory createStagingBufferMemory_() {
@@ -376,6 +383,10 @@ class Renderer {
                                     vk::ImageLayout::eGeneral),
             vk::DescriptorBufferInfo(uboBuffer_.vkBuffer(), 0,
                                      uboBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(bvhNodeBuffer_.vkBuffer(), 0,
+                                     bvhNodeBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(bvhTriangleBuffer_.vkBuffer(), 0,
+                                     bvhTriangleBuffer_.requestedSize()),
             vk::DescriptorBufferInfo(areaLightBuffer_.vkBuffer(), 0,
                                      areaLightBuffer_.requestedSize()),
             vk::DescriptorBufferInfo(meshBuffer_.vkBuffer(), 0,
@@ -394,6 +405,10 @@ class Renderer {
   }
 
   void logSceneStats_() {
+    LOG(INFO) << "bvhNodes_.size(): " << bvhData_.nodes.size() << " ("
+              << bvhNodeBuffer_.requestedSize() << " bytes)";
+    LOG(INFO) << "bvhTriangles_.size(): " << bvhData_.triangles.size() << " ("
+              << bvhTriangleBuffer_.requestedSize() << " bytes)";
     LOG(INFO) << "areaLights()->size(): " << scene_->areaLights()->size()
               << " (" << areaLightBuffer_.requestedSize() << " bytes)";
     LOG(INFO) << "meshes()->size(): " << scene_->meshes()->size() << " ("
@@ -431,6 +446,10 @@ class Renderer {
     hk::oneTimeSetup(seedImage_, [this](const hk::Buffer &stagingBuffer) {
       initializeSeeds_(stagingBuffer);
     });
+    setupBuffer_(bvhNodeBuffer_,
+                 [&]() { return (void *)bvhData_.nodes.data(); });
+    setupBuffer_(bvhTriangleBuffer_,
+                 [&]() { return (void *)bvhData_.triangles.data(); });
     setupBuffer_(areaLightBuffer_,
                  [&]() { return (void *)scene_->areaLights()->Data(); });
     setupBuffer_(meshBuffer_,
@@ -482,6 +501,7 @@ class Renderer {
 
   const std::vector<uint8_t> sceneBuffer_;
   const hk::scene::Scene *scene_;
+  hk::BVHData bvhData_ = hk::buildBVH(scene_);
 
   hk::SurfaceProvider surfaceProvider_;
   hk::Instance instance_;
@@ -502,6 +522,8 @@ class Renderer {
   UniformBufferObject ubo_;
   hk::Buffer uboBuffer_ = createStorageBuffer_(sizeof(ubo_));
   hk::Buffer uboStagingBuffer_ = createStagingBuffer_(uboBuffer_);
+  hk::Buffer bvhNodeBuffer_ = createStorageBuffer_(bvhData_.nodes);
+  hk::Buffer bvhTriangleBuffer_ = createStorageBuffer_(bvhData_.triangles);
   hk::Buffer areaLightBuffer_ = createStorageBuffer_(scene_->areaLights());
   hk::Buffer meshBuffer_ = createStorageBuffer_(scene_->meshes());
   hk::Buffer materialBuffer_ = createStorageBuffer_(scene_->materials());

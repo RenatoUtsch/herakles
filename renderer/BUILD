@@ -29,6 +29,7 @@ cc_binary(
     ],
     deps = [
         "//herakles/scene",
+        "//herakles/scene:bvh",
         "//herakles/scene:camera",
         "//herakles/vulkan:allocator",
         "//herakles/vulkan:buffer",

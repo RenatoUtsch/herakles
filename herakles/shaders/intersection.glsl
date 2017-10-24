@@ -72,34 +72,26 @@ bool intersectsTriangle(const Ray ray, const uint begin, out float t,
  */
 bool intersectsBoundingBox(
     const Ray ray, const float rayTMax, const vec3 minPoint, const vec3 maxPoint,
-    const vec3 invDir, const bvec3 dirIsNeg) {
-  const vec3 boundsMin = vec3(dirIsNeg.x ? maxPoint.x : minPoint.x,
-                              dirIsNeg.y ? maxPoint.y : minPoint.y,
-                              dirIsNeg.z ? maxPoint.z : minPoint.z);
-  const vec3 boundsMax = vec3(dirIsNeg.x ? minPoint.x : maxPoint.x,
-                              dirIsNeg.y ? minPoint.y : maxPoint.y,
-                              dirIsNeg.z ? minPoint.z : maxPoint.z);
+    const vec3 invDir, const vec3 origByDir) {
+  const vec3 p0 = minPoint * invDir - origByDir;
+  const vec3 p1 = maxPoint * invDir - origByDir;
+  const vec3 pMin = min(p0, p1);
+  const vec3 pMax = max(p0, p1);
 
-  vec3 tMin = (boundsMin - ray.origin) * invDir;
-  vec3 tMax = (boundsMax - ray.origin) * invDir;
+  float tMin = max(max(max(0.0f, pMin.x), pMin.y), pMin.z);
+  float tMax = min(min(min(rayTMax, pMax.x), pMax.y), pMax.z);
 
   // Update tMax to ensure robust bounds intersection.
   tMax *= 1.0f + 2.0f * GAMMA_3;
 
-  if (tMin.x > tMax.y || tMin.y > tMax.x) return false;
-  if (tMin.y > tMin.x) tMin.x = tMin.y;
-  if (tMax.y < tMax.x) tMax.x = tMax.y;
-  if (tMin.x > tMax.z || tMin.z > tMax.x) return false;
-  if (tMin.z > tMin.x) tMin.x = tMin.z;
-  if (tMax.z < tMax.x) tMax.x = tMax.z;
-
-  return tMin.x < rayTMax && tMax.x > EPSILON;
+  return tMin <= tMax;
 }
 
 /// Ray-scene intersection.
 /// Returns the interaction at intersection point.
 bool intersectsScene(const Ray ray, out Interaction isect) {
   const vec3 invDir = 1.0f / ray.direction;
+  const vec3 origByDir = ray.origin * invDir;
   const bvec3 dirIsNeg = bvec3(invDir.x < 0, invDir.y < 0, invDir.z < 0);
   bool hit = false;
   float t = INF;
@@ -110,17 +102,28 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
   float currT;
   vec2 currST;
 
-  uint toVisitOffset = 0, currentNodeIndex = 0;
   uint nodesToVisit[64];
-  while (true) {
-    const BVHNode node = BVHNodes[currentNodeIndex];
+  nodesToVisit[0] = 0;
+
+  int toVisitOffset = 0;
+  while (toVisitOffset >= 0) {
+    const uint currentNode = nodesToVisit[toVisitOffset--];
+    const BVHNode node = BVHNodes[currentNode];
     uint numTriangles, splitAxis;
     unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
 
     // Check ray against BVH node.
     if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
-                              dirIsNeg)) {
-      if (numTriangles > 0) {
+                              origByDir)) {
+      if (numTriangles == 0) {  // Interior node.
+        if (dirIsNeg[splitAxis]) {
+          nodesToVisit[++toVisitOffset] = currentNode + 1;
+          nodesToVisit[++toVisitOffset] = node.trianglesOrSecondChildOffset;
+        } else {
+          nodesToVisit[++toVisitOffset] = node.trianglesOrSecondChildOffset;
+          nodesToVisit[++toVisitOffset] = currentNode + 1;
+        }
+      } else {
         for (int i = 0; i < numTriangles; ++i) {
           BVHTriangle triangle = BVHTriangles[node.trianglesOrSecondChildOffset
                                               + i];
@@ -133,21 +136,7 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
             st = currST;
           }
         }
-
-        if (toVisitOffset == 0) break;
-        currentNodeIndex = nodesToVisit[--toVisitOffset];
-      } else {
-        if (dirIsNeg[splitAxis]) {
-          nodesToVisit[toVisitOffset++] = currentNodeIndex + 1;
-          currentNodeIndex = node.trianglesOrSecondChildOffset;
-        } else {
-          nodesToVisit[toVisitOffset++] = node.trianglesOrSecondChildOffset;
-          currentNodeIndex = currentNodeIndex + 1;
-        }
       }
-    } else {
-      if (toVisitOffset == 0) break;
-      currentNodeIndex = nodesToVisit[--toVisitOffset];
     }
   }
 
@@ -175,17 +164,47 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
 /// need the interaction information. You can use minT = INF if you don't have
 /// a minT.
 bool unoccluded(const Ray ray, const float dist) {
+  const vec3 invDir = 1.0f / ray.direction;
+  const vec3 origByDir = ray.origin * invDir;
+  const bvec3 dirIsNeg = bvec3(invDir.x < 0, invDir.y < 0, invDir.z < 0);
   const float minT = dist - 1e-4; // To prevent hitting objects at exactly dist.
   float currT;
   vec2 currST;
-  const uint numMeshes = Meshes.length();
-  for (uint i = 0; i < numMeshes; ++i) {
-    const Mesh mesh = Meshes[i];
-    for (uint j = mesh.begin; j < mesh.end; j += 3) {
-      if (intersectsTriangle(ray, j, currT, currST) && currT <= minT - EPSILON
-          && currT > EPSILON) {
-        return false;
+
+  uint toVisitOffset = 0, currentNodeIndex = 0;
+  uint nodesToVisit[64];
+  while (true) {
+    const BVHNode node = BVHNodes[currentNodeIndex];
+    uint numTriangles, splitAxis;
+    unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
+
+    // Check ray against BVH node.
+    if (intersectsBoundingBox(ray, minT, node.minPoint, node.maxPoint, invDir,
+                              origByDir)) {
+      if (numTriangles > 0) {
+        for (int i = 0; i < numTriangles; ++i) {
+          BVHTriangle triangle = BVHTriangles[node.trianglesOrSecondChildOffset
+                                              + i];
+          if (intersectsTriangle(ray, triangle.begin, currT, currST) &&
+              currT <= minT - EPSILON && currT > EPSILON) {
+            return false;
+          }
+        }
+
+        if (toVisitOffset == 0) break;
+        currentNodeIndex = nodesToVisit[--toVisitOffset];
+      } else {
+        if (dirIsNeg[splitAxis]) {
+          nodesToVisit[toVisitOffset++] = currentNodeIndex + 1;
+          currentNodeIndex = node.trianglesOrSecondChildOffset;
+        } else {
+          nodesToVisit[toVisitOffset++] = node.trianglesOrSecondChildOffset;
+          currentNodeIndex = currentNodeIndex + 1;
+        }
       }
+    } else {
+      if (toVisitOffset == 0) break;
+      currentNodeIndex = nodesToVisit[--toVisitOffset];
     }
   }
   return true;

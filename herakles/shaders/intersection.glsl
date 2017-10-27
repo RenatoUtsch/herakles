@@ -112,9 +112,9 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
   uint numTriangles, splitAxis;
   unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
   while (toVisitOffset >= 0) {
-    if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
-                              origByDir)) {
-      if (numTriangles == 0) {
+    while (toVisitOffset >= 0 && numTriangles == 0) {
+      if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
+                                origByDir)) {
         if (dirIsNeg[splitAxis]) {
           nodesToVisit[toVisitOffset++] = currentNode + 1;
           nodesToVisit[toVisitOffset++] = node.trianglesOrSecondChildOffset;
@@ -122,7 +122,19 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
           nodesToVisit[toVisitOffset++] = node.trianglesOrSecondChildOffset;
           nodesToVisit[toVisitOffset++] = currentNode + 1;
         }
-      } else {
+      }
+
+      if (--toVisitOffset < 0) {
+        break;
+      }
+      currentNode = nodesToVisit[toVisitOffset];
+      node = BVHNodes[currentNode];
+      unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
+    }
+
+    while (toVisitOffset >= 0 && numTriangles > 0) {
+      if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
+                                origByDir)) {
         for (int i = 0; i < numTriangles; ++i) {
           BVHTriangle triangle = BVHTriangles[node.trianglesOrSecondChildOffset
                                               + i];
@@ -136,14 +148,14 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
           }
         }
       }
-    }
 
-    if (--toVisitOffset < 0) {
-      break;
+      if (--toVisitOffset < 0) {
+        break;
+      }
+      currentNode = nodesToVisit[toVisitOffset];
+      node = BVHNodes[currentNode];
+      unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
     }
-    currentNode = nodesToVisit[toVisitOffset];
-    node = BVHNodes[currentNode];
-    unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
   }
 
   if (!hit) {

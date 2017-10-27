@@ -114,12 +114,10 @@ struct BVHNode {
   /// First, minimum point in the BVH's bounding box.
   vec3 minPoint;
 
-  /// 2 16bit integers backed into one variable. The number of triangles in the
-  /// BVH node is packed into the first 16 bits and the split axis in the second
-  /// 16 bits. Use unpackNumTrianglesAndAxis() to unpack this value.
+  /// Number of triangles in the node.
   /// If numTriangles is 0, this is an internal node, otherwise it's a leaf
   /// node.
-  uint packedNumTrianglesAndAxis;
+  uint numTriangles;
 
   /// Second, maximum point in the BVH's bounding box.
   vec3 maxPoint;
@@ -131,17 +129,6 @@ struct BVHNode {
   /// node (the first child is the next element in the array).
   uint trianglesOrSecondChildOffset;
 };
-
-/// Unpacks the numTriangles and axis elements of a BVHNode.
-/// This function assumes a Little Endian CPU.
-void unpackNumTrianglesAndAxis(const BVHNode node, out uint numTriangles,
-                                out uint axis) {
-  // numTriangles is in the first 16 bits.
-  numTriangles = node.packedNumTrianglesAndAxis & 0x0000FFFF;
-
-  // axis is in the last 16 bits.
-  axis = node.packedNumTrianglesAndAxis >> 16;
-}
 
 /**
  * Represents an interaction with a triangle point.

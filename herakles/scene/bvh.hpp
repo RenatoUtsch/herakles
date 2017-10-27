@@ -56,13 +56,7 @@ struct BVHNode {
 
   /// Number of triangles in the node. If 0, the node is an interior node, and
   /// if > 0, the node is a leaf node.
-  uint16_t numTriangles;
-
-  /// Coordinate axis the triangles were partitioned. This is used to traverse
-  /// the tree in front-to-back order and skip bounding box intersections if a
-  /// closer intersection has already been found. Only meaningful if the node is
-  /// an interior node.
-  uint16_t splitAxis;
+  uint32_t numTriangles;
 
   /// Second point that represents the maximum of the bounding box.
   glm::vec3 maxPoint;

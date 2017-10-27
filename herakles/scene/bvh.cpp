@@ -42,10 +42,7 @@ struct BVHBuildNode {
   std::array<std::unique_ptr<BVHBuildNode>, 2> children;
 
   /// Number of triangles in the leaf node. If 0, is an internal node.
-  uint16_t numTriangles;
-
-  /// Axis into which the node was split.
-  uint16_t splitAxis;
+  uint32_t numTriangles;
 
   /// Offset into the triangles array for the first triangle of the leaf node.
   uint32_t trianglesOffset;
@@ -53,12 +50,11 @@ struct BVHBuildNode {
   /**
    * Builds an internal BVH node enclosing the two given leaf nodes.
    */
-  BVHBuildNode(uint16_t splitAxis, std::unique_ptr<BVHBuildNode> &&leaf1,
+  BVHBuildNode(std::unique_ptr<BVHBuildNode> &&leaf1,
                std::unique_ptr<BVHBuildNode> &&leaf2)
       : bounds(leaf1->bounds + leaf2->bounds),
         children({{std::move(leaf1), std::move(leaf2)}}),
         numTriangles(0),
-        splitAxis(splitAxis),
         trianglesOffset(0) {}
 
   /**
@@ -69,7 +65,6 @@ struct BVHBuildNode {
       : bounds(bounds),
         children({{nullptr, nullptr}}),
         numTriangles(numTriangles),
-        splitAxis(0),
         trianglesOffset(trianglesOffset) {}
 };
 
@@ -320,7 +315,6 @@ std::unique_ptr<BVHBuildNode> SAHBuild_(
   }
 
   return std::make_unique<BVHBuildNode>(
-      dim,
       SAHBuild_(triangles, triangleInfos, start, splitPoint, totalNodes,
                 orderedTriangles),
       SAHBuild_(triangles, triangleInfos, splitPoint, end, totalNodes,
@@ -347,8 +341,6 @@ std::vector<BVHNode> flattenBVH_(const BVHBuildNode &root, size_t numNodes) {
     if (node.numTriangles > 0) {
       linearNode.trianglesOffset = node.trianglesOffset;
     } else {
-      linearNode.splitAxis = node.splitAxis;
-
       // Add second child first and first child afterwards, because first child
       // will go right after the parent in the linear BVH.
       s.emplace(*node.children[1], &linearNode);
@@ -396,7 +388,6 @@ BVHData buildBVH(const Scene *scene) {
     } else {
       LOG(INFO) << "offset: " << i << " | numTriangles: " << node.numTriangles
                 << " | secondChildOffset: " << node.secondChildOffset
-                << " | splitAxis: " << node.splitAxis
                 << " | minPoint: " << node.minPoint
                 << " | maxPoint: " << node.maxPoint;
     }

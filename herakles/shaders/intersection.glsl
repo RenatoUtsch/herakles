@@ -93,35 +93,35 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
   const vec3 invDir = 1.0f / ray.direction;
   const vec3 origByDir = ray.origin * invDir;
   const bvec3 dirIsNeg = bvec3(invDir.x < 0, invDir.y < 0, invDir.z < 0);
+
   bool hit = false;
   float t = INF;
   uint meshID = 0;
   uint begin = 0;
   vec2 st;
 
-  float currT;
-  vec2 currST;
-
   uint nodesToVisit[64];
   nodesToVisit[0] = 0;
 
-  int toVisitOffset = 0;
-  while (toVisitOffset >= 0) {
-    const uint currentNode = nodesToVisit[toVisitOffset--];
-    const BVHNode node = BVHNodes[currentNode];
-    uint numTriangles, splitAxis;
-    unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
+  float currT;
+  vec2 currST;
 
-    // Check ray against BVH node.
+  int toVisitOffset = 0;
+  BVHNode node = BVHNodes[toVisitOffset];
+  uint numTriangles, splitAxis;
+  unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
+  while (toVisitOffset >= 0) {
+#if 1
     if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
                               origByDir)) {
-      if (numTriangles == 0) {  // Interior node.
+      if (numTriangles == 0) {
+        const uint currentNode = nodesToVisit[toVisitOffset];
         if (dirIsNeg[splitAxis]) {
-          nodesToVisit[++toVisitOffset] = currentNode + 1;
-          nodesToVisit[++toVisitOffset] = node.trianglesOrSecondChildOffset;
+          nodesToVisit[toVisitOffset++] = currentNode + 1;
+          nodesToVisit[toVisitOffset++] = node.trianglesOrSecondChildOffset;
         } else {
-          nodesToVisit[++toVisitOffset] = node.trianglesOrSecondChildOffset;
-          nodesToVisit[++toVisitOffset] = currentNode + 1;
+          nodesToVisit[toVisitOffset++] = node.trianglesOrSecondChildOffset;
+          nodesToVisit[toVisitOffset++] = currentNode + 1;
         }
       } else {
         for (int i = 0; i < numTriangles; ++i) {
@@ -138,6 +138,57 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
         }
       }
     }
+
+    if (--toVisitOffset < 0) {
+      break;
+    }
+    node = BVHNodes[toVisitOffset];
+    unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
+#else
+    while (toVisitOffset >= 0 && numTriangles == 0) {
+      if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
+                                origByDir)) {
+        const uint currentNode = toVisitOffset;
+        if (dirIsNeg[splitAxis]) {
+          nodesToVisit[toVisitOffset++] = currentNode + 1;
+          nodesToVisit[toVisitOffset++] = node.trianglesOrSecondChildOffset;
+        } else {
+          nodesToVisit[toVisitOffset++] = node.trianglesOrSecondChildOffset;
+          nodesToVisit[toVisitOffset++] = currentNode + 1;
+        }
+      }
+
+      if (--toVisitOffset < 0) {
+        break;
+      }
+      node = BVHNodes[toVisitOffset];
+      unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
+    }
+
+    while (toVisitOffset >= 0 && numTriangles > 0) {
+      if (intersectsBoundingBox(ray, t, node.minPoint, node.maxPoint, invDir,
+                                origByDir)) {
+        for (int i = 0; i < numTriangles; ++i) {
+          BVHTriangle triangle = BVHTriangles[node.trianglesOrSecondChildOffset
+                                              + i];
+          if (intersectsTriangle(ray, triangle.begin, currT, currST) &&
+              currT <= t - EPSILON && currT > EPSILON) {
+            hit = true;
+            t = currT;
+            meshID = triangle.meshID;
+            begin = triangle.begin;
+            st = currST;
+          }
+        }
+      }
+
+      if (--toVisitOffset < 0) {
+        break;
+      }
+      node = BVHNodes[toVisitOffset];
+      unpackNumTrianglesAndAxis(node, numTriangles, splitAxis);
+    }
+#endif
   }
 
   if (!hit) {

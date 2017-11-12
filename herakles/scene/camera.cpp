@@ -20,16 +20,15 @@
 
 namespace hk {
 
-CameraManager::CameraManager(const Surface &surface, float moveSpeed,
-                             float mouseSpeed, float horizontalAngle,
-                             float verticalAngle)
-    : surface_(surface),
-      moveSpeed_(moveSpeed),
-      mouseSpeed_(mouseSpeed),
-      horizontalAngle_(horizontalAngle),
-      verticalAngle_(verticalAngle) {
+CameraManager::CameraManager(const Surface &surface,
+                             const PinholeCamera &camera, float moveSpeed,
+                             float mouseSpeed)
+    : surface_(surface), moveSpeed_(moveSpeed), mouseSpeed_(mouseSpeed) {
   glfwSetInputMode(surface_.window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwGetCursorPos(surface_.window(), &lastMouseX_, &lastMouseY_);
+
+  verticalAngle_ = glm::asin(camera.direction.y);
+  horizontalAngle_ = glm::asin(camera.right.x) + glm::half_pi<float>();
 }
 
 bool CameraManager::update(PinholeCamera &camera, float deltaTime) {

@@ -48,7 +48,7 @@ Interaction sampleTriangle(const uint meshID, const uint begin) {
                     + b.t * Normals[Indices[begin + 1]]
                     + p   * Normals[Indices[begin + 2]];
 
-  return Interaction(point, meshID, normal, false);
+  return Interaction(point, meshID, normal, false, begin);
 }
 
 /// Uniformly samples one area light source. The area light source is chosen
@@ -83,7 +83,8 @@ bool sampleOneLight(const Interaction isect, out vec3 contribution) {
   const float lightPdf = triangleArea(begin)
                        * dot(triangleIt.normal, -1.0f * dir) / dist2;
 
-  if (unoccluded(spawnRay(isect, dir), sqrt(dist2))) {
+  if (unoccluded(Ray(isect.point, dir), sqrt(dist2),
+                 SkipTriangle(true, isect.meshID, isect.begin))) {
     contribution = light.emission * lightPdf;
     return true;
   }

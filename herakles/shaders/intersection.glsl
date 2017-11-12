@@ -24,11 +24,6 @@
 #include "random.glsl"
 #include "scene.glsl"
 
-/// Spawns a ray from an intersection so that it won't be intersected again.
-Ray spawnRay(const Interaction isect, const vec3 direction) {
-  return Ray(isect.point + isect.normal * 1e-6, direction);
-}
-
 /// Computes the given triangle's area.
 float triangleArea(const uint begin) {
   const vec3 v0 = Vertices[Indices[begin]];
@@ -89,7 +84,8 @@ bool intersectsBoundingBox(
 
 /// Ray-scene intersection.
 /// Returns the interaction at intersection point.
-bool intersectsScene(const Ray ray, out Interaction isect) {
+bool intersectsScene(const Ray ray, const SkipTriangle skip,
+                     out Interaction isect) {
   const vec3 invDir = 1.0f / ray.direction;
   const vec3 origByDir = ray.origin * invDir;
   const bvec3 dirIsNeg = bvec3(invDir.x < 0, invDir.y < 0, invDir.z < 0);
@@ -126,6 +122,10 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
         for (int i = 0; i < numTriangles; ++i) {
           BVHTriangle triangle = BVHTriangles[node.trianglesOrSecondChildOffset
                                               + i];
+          if (skip.skip && triangle.meshID == skip.meshID
+              && triangle.begin == skip.begin) {
+            continue;
+          }
           if (intersectsTriangle(ray, triangle.begin, currT, currST) &&
               currT <= t - EPSILON && currT > EPSILON) {
             hit = true;
@@ -152,7 +152,8 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
       ray.origin + ray.direction * t,
       meshID,
       backface ? normal * -1.0f : normal,
-      backface);
+      backface,
+      begin);
 
   return true;
 }
@@ -162,7 +163,7 @@ bool intersectsScene(const Ray ray, out Interaction isect) {
 /// This is substantially faster than intersectsScene, so use it if you don't
 /// need the interaction information. You can use minT = INF if you don't have
 /// a minT.
-bool unoccluded(const Ray ray, const float dist) {
+bool unoccluded(const Ray ray, const float dist, const SkipTriangle skip) {
   const vec3 invDir = 1.0f / ray.direction;
   const vec3 origByDir = ray.origin * invDir;
   const bvec3 dirIsNeg = bvec3(invDir.x < 0, invDir.y < 0, invDir.z < 0);
@@ -194,6 +195,10 @@ bool unoccluded(const Ray ray, const float dist) {
         for (int i = 0; i < numTriangles; ++i) {
           BVHTriangle triangle = BVHTriangles[node.trianglesOrSecondChildOffset
                                               + i];
+          if (skip.skip && triangle.meshID == skip.meshID
+              && triangle.begin == skip.begin) {
+            continue;
+          }
           if (intersectsTriangle(ray, triangle.begin, currT, currST) &&
               currT <= minT - EPSILON && currT > EPSILON) {
             return false;

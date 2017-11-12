@@ -28,7 +28,7 @@
 // (u, v) = (s, t) for coordinates in Herakles.
 
 
-const uint NUM_SAMPLES = 5;
+const uint NUM_SAMPLES = 1;
 const uint MAX_DEPTH = 4;
 
 const float EPSILON = 1e-7;
@@ -157,8 +157,25 @@ struct Interaction {
   vec3 normal;
 
   /// If the intersection came from the backface. If this is true, the normal
-  /// has already been inversed automatically.
+  /// has already been inverted automatically.
   bool backface;
+
+  /// Triangle beginning
+  uint begin;
+};
+
+/**
+ * Represents a triangle to be skipped.
+ */
+struct SkipTriangle {
+  /// If should be skipped.
+  bool skip;
+
+  /// Index of the mesh.
+  uint meshID;
+
+  /// Beginning of the triangle.
+  uint begin;
 };
 
 layout(binding = 0, rgba32f) uniform restrict image2D Image;

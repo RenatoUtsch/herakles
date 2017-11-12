@@ -73,10 +73,8 @@ class CameraManager {
    * @param horizontalAngle Initial horizontal angle, in radians.
    * @param verticalAngle Initial vertical angle, in radians.
    */
-  CameraManager(const Surface &surface, float moveSpeed = 1.0f,
-                float mouseSpeed = 0.05f,
-                float horizontalAngle = glm::pi<float>(),
-                float verticalAngle = 0.0f);
+  CameraManager(const Surface &surface, const PinholeCamera &camera,
+                float moveSpeed = 10.0f, float mouseSpeed = 0.05f);
 
   /**
    * Updates the given camera with the latest changes in input.

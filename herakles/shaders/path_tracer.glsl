@@ -31,8 +31,9 @@ vec3 radiance(Ray ray) {
   vec3 color = vec3(0.0f);
   vec3 beta = vec3(1.0f);
   Interaction isect;
+  SkipTriangle skip = SkipTriangle(false, 0, 0);
   for (int depth = 0; depth < MAX_DEPTH; ++depth) {
-    if (!intersectsScene(ray, isect)) {
+    if (!intersectsScene(ray, skip, isect)) {
       return vec3(0.0f);
     }
 
@@ -72,7 +73,9 @@ vec3 radiance(Ray ray) {
         v * sin(theta) * phi +
         w * sqrt(1.0f - u2));
 
-    ray = spawnRay(isect, direction);
+    ray.origin = isect.point;
+    ray.direction = direction;
+    skip = SkipTriangle(true, isect.meshID, isect.begin);
   }
 
   return color;

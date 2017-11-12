@@ -548,7 +548,7 @@ class Renderer {
   vk::UniqueSemaphore imageAvailableSemaphore_ = device_.createSemaphore();
   vk::UniqueSemaphore renderFinishedSemaphore_ = device_.createSemaphore();
 
-  hk::CameraManager cameraManager_ = hk::CameraManager(surface_);
+  hk::CameraManager cameraManager_ = hk::CameraManager(surface_, ubo_.camera);
 
   std::chrono::high_resolution_clock timer_;
   float deltaTime_;  // In seconds

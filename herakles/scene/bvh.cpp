@@ -385,23 +385,6 @@ BVHData buildBVH(const Scene *scene) {
                               totalNodes, orderedTriangles);
   auto flattenedBVH = flattenBVH_(*root, totalNodes);
 
-  for (size_t i = 0; i < flattenedBVH.size(); ++i) {
-    const auto &node = flattenedBVH[i];
-    if (node.numTriangles > 0) {
-      LOG(INFO) << "offset: " << i << " | numTriangles: " << node.numTriangles
-                << " | trianglesOffset: " << node.trianglesOffset
-                << " | begin: " << orderedTriangles[node.trianglesOffset].begin
-                << " | minPoint: " << node.minPoint
-                << " | maxPoint: " << node.maxPoint;
-    } else {
-      LOG(INFO) << "offset: " << i << " | numTriangles: " << node.numTriangles
-                << " | secondChildOffset: " << node.secondChildOffset
-                << " | splitAxis: " << node.splitAxis
-                << " | minPoint: " << node.minPoint
-                << " | maxPoint: " << node.maxPoint;
-    }
-  }
-
   return {std::move(flattenedBVH), std::move(orderedTriangles)};
 }
 

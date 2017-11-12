@@ -36,8 +36,8 @@ void main() {
 
   vec3 color = vec3(0.0f);
   for (int i = 0; i < NUM_SAMPLES; ++i) {
-    vec3 direction = cx * (pixelIndex.x / resolution.x - 0.5)
-                   - cy * (pixelIndex.y / resolution.y - 0.5)
+    vec3 direction = cx * ((pixelIndex.x - 0.5 + rand()) / resolution.x - 0.5)
+                   - cy * ((pixelIndex.y - 0.5 + rand()) / resolution.y - 0.5)
                    + Camera.direction;
     color += radiance(Ray(Camera.position,
                           normalize(direction)));

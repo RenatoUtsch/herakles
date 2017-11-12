@@ -36,8 +36,10 @@ void main() {
 
   vec3 color = vec3(0.0f);
   for (int i = 0; i < NUM_SAMPLES; ++i) {
-    vec3 direction = cx * ((pixelIndex.x - 0.5 + rand()) / resolution.x - 0.5)
-                   - cy * ((pixelIndex.y - 0.5 + rand()) / resolution.y - 0.5)
+    const float r1 = 2.0f * rand(), dx = r1 < 1.0f ? sqrt(r1) - 1.0f : 1.0f - sqrt(2.f - r1);
+    const float r2 = 2.0f * rand(), dy = r2 < 1.0f ? sqrt(r2) - 1.0f : 1.0f - sqrt(2.f - r2);
+    vec3 direction = cx * ((pixelIndex.x + 0.5 + dx) / resolution.x - 0.5)
+                   - cy * ((pixelIndex.y + 0.5 + dy) / resolution.y - 0.5)
                    + Camera.direction;
     color += radiance(Ray(Camera.position,
                           normalize(direction)));

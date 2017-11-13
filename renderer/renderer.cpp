@@ -109,6 +109,7 @@ class Renderer {
         ubo_(scene_->camera()) {
     logSceneStats_();
     initializeGPUData_();
+    LOG(INFO) << "Renderer initialized";
   }
 
   void run() {
@@ -450,8 +451,10 @@ class Renderer {
                  [&]() { return (void *)bvhData_.nodes.data(); });
     setupBuffer_(bvhTriangleBuffer_,
                  [&]() { return (void *)bvhData_.triangles.data(); });
-    setupBuffer_(areaLightBuffer_,
-                 [&]() { return (void *)scene_->areaLights()->Data(); });
+    if (areaLightBuffer_.requestedSize() > 0) {
+      setupBuffer_(areaLightBuffer_,
+                   [&]() { return (void *)scene_->areaLights()->Data(); });
+    }
     setupBuffer_(meshBuffer_,
                  [&]() { return (void *)scene_->meshes()->Data(); });
     setupBuffer_(materialBuffer_,
@@ -462,7 +465,9 @@ class Renderer {
                  [&]() { return (void *)scene_->vertices()->Data(); });
     setupBuffer_(normalBuffer_,
                  [&]() { return (void *)scene_->normals()->Data(); });
-    setupBuffer_(uvBuffer_, [&]() { return (void *)scene_->uvs()->Data(); });
+    if (uvBuffer_.requestedSize() > 0) {
+      setupBuffer_(uvBuffer_, [&]() { return (void *)scene_->uvs()->Data(); });
+    }
   }
 
   /// Initializes the seeds used in rendering.

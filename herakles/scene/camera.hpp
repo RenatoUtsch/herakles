@@ -45,7 +45,7 @@ struct PinholeCamera {
   alignas(16) glm::vec3 up;
 
   /// Right vector of the camera.
-  alignas(16) glm::vec3 right = glm::cross(direction, up);
+  alignas(16) glm::vec3 right;
 
   PinholeCamera() = default;
   PinholeCamera(const hk::scene::PinholeCamera *camera)
@@ -54,7 +54,12 @@ struct PinholeCamera {
         fov(camera->fov()),
         direction(camera->direction().x(), camera->direction().y(),
                   camera->direction().z()),
-        up(camera->up().x(), camera->up().y(), camera->up().z()) {}
+        up(camera->up().x(), camera->up().y(), camera->up().z()) {
+    direction = glm::normalize(direction - position);
+    up = glm::normalize(up);
+    right = glm::cross(direction, up);
+    up = glm::cross(right, direction);
+  }
 };
 
 /**

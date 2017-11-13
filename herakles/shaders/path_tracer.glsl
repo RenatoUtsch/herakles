@@ -35,8 +35,12 @@ vec3 radiance(Ray ray) {
   for (int depth = 0; depth < MAX_DEPTH; ++depth) {
     if (!intersectsScene(ray, skip, isect)) {
       // Poor man's excuse of an infinite area light.
-      color += beta * ambientLight;
-      break;
+      if (HasAmbientLight) {
+        color += beta * AmbientLight;
+      } else {
+        color = vec3(0.0f);
+      }
+      return color;
     }
 
     // Direct light sampling in the first iteration.
@@ -50,7 +54,7 @@ vec3 radiance(Ray ray) {
     }
 
     // Update the reflectance.
-    beta *= Materials[Meshes[isect.meshID].materialID].kd;
+    beta *= Materials[Meshes[isect.meshID].materialID].kr;
 
     // Explicit light source sampling.
     // Don't do this for perfectly specular BSDFs.

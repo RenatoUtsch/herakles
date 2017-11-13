@@ -68,6 +68,17 @@ struct AreaLight {
 };
 
 /**
+ * Represents a single spot light.
+ */
+struct SpotLight {
+  vec3 emission;
+  vec3 from;
+  float cosTotalWidth;
+  vec3 to;
+  float cosFalloffStart;
+};
+
+/**
  * Represents a single mesh instance.
  */
 struct Mesh {
@@ -88,12 +99,25 @@ struct Mesh {
   //uint transformID;
 };
 
+/// Material types.
+const uint Matte = 0;
+const uint Glass = 1;
+
 /**
  * Represents a single mesh's material. 
  */
 struct Material {
-  /// Reflectivity of the diffuse surface.
-  vec3 kd;
+  /// Reflectivity of the surface.
+  vec3 kr;
+
+  /// Material type.
+  uint type;
+
+  /// Transmissitivity of the surface.
+  vec3 kt;
+
+  /// Index of refraction.
+  float eta;
 };
 
 /**
@@ -182,7 +206,8 @@ layout(binding = 0, rgba32f) uniform restrict image2D Image;
 layout(binding = 1, rg32ui) uniform restrict uimage2D Seeds;
 layout(binding = 2, std140) uniform restrict readonly UBO {
   PinholeCamera Camera;
-  vec3 ambientLight;
+  vec3 AmbientLight;
+  bool HasAmbientLight;
   uint FrameCount;
 };
 
@@ -198,31 +223,35 @@ layout(std430, binding = 5) buffer AreaLightBuffer {
   AreaLight AreaLights[];
 };
 
-layout(std430, binding = 6) buffer MeshesBuffer {
+layout(std430, binding = 6) buffer SpotLightBuffer {
+  SpotLight SpotLights[];
+};
+
+layout(std430, binding = 7) buffer MeshesBuffer {
   Mesh Meshes[];
 };
 
-layout(std430, binding = 7) buffer MaterialsBuffer {
+layout(std430, binding = 8) buffer MaterialsBuffer {
   Material Materials[];
 };
 
-layout(std430, binding = 8) buffer IndicesBuffer {
+layout(std430, binding = 9) buffer IndicesBuffer {
   uint Indices[];
 };
 
-layout(std430, binding = 9) buffer VerticesBuffer {
+layout(std430, binding = 10) buffer VerticesBuffer {
   vec3 Vertices[];
 };
 
-layout(std430, binding = 10) buffer NormalsBuffer {
+layout(std430, binding = 11) buffer NormalsBuffer {
   vec3 Normals[];
 };
 
-layout(std430, binding = 11) buffer UVBuffer {
+layout(std430, binding = 12) buffer UVBuffer {
   vec2 UVs[];
 };
 
-/* layout(std430, binding = 12) buffer TransformsBuffer { */
+/* layout(std430, binding = 13) buffer TransformsBuffer { */
 /*   mat4 Transforms[]; */
 /* }; */
 

@@ -52,12 +52,13 @@ Interaction sampleTriangle(const uint meshID, const uint begin) {
 }
 
 /// Uniformly samples one area light source. The area light source is chosen
-/// uniformly, excluding the first, unused area light.
+/// uniformly.
 /// Returns if there is any light contribution to isect or not. If there is, the
 /// contribution output is set to the light contribution to the intersection.
 /// Be sure the number of area lights is > 1 when calling this.
-bool sampleOneLight(const Interaction isect, out vec3 contribution) {
-  const AreaLight light = AreaLights[urand(AreaLights.length())];
+bool sampleOneAreaLight(const uint lightIndex, const Interaction isect,
+                     out vec3 contribution) {
+  const AreaLight light = AreaLights[lightIndex];
   const Mesh mesh = Meshes[light.meshID];
 
   // Chooses a triangle from the mesh at random.
@@ -76,10 +77,7 @@ bool sampleOneLight(const Interaction isect, out vec3 contribution) {
     return false;
   }
 
-  const float dist2 = unormDir.x * unormDir.x
-                    + unormDir.y * unormDir.y
-                    + unormDir.z * unormDir.z;
-
+  const float dist2 = dot(unormDir, unormDir);
   const float lightPdf = triangleArea(begin)
                        * dot(triangleIt.normal, -1.0f * dir) / dist2;
 
@@ -90,6 +88,65 @@ bool sampleOneLight(const Interaction isect, out vec3 contribution) {
   }
 
   return false;
+}
+
+float spotLightFalloff(const SpotLight light, const vec3 invDir) {
+  const vec3 axis = normalize(light.to - light.from);
+  const float cosTheta = dot(invDir, axis);
+
+  if (cosTheta < light.cosTotalWidth) return 0.0f;
+  if (cosTheta >= light.cosFalloffStart) return 1.0f;
+
+  const float delta = (cosTheta - light.cosTotalWidth) /
+                      (light.cosFalloffStart - light.cosTotalWidth);
+
+  return (delta * delta) * (delta * delta);
+} 
+
+/// Uniformly samples one spot light. Returns if there is any contribution to
+/// isect or not, with the potential contribution set in the contribution
+/// variable.
+/// Be sure the number of spot lights is > 1 when calling this.
+bool sampleOneSpotLight(const uint lightIndex, const Interaction isect,
+                        out vec3 contribution) {
+  const SpotLight light = SpotLights[lightIndex];
+  const vec3 unormDir = light.from - isect.point;
+  const vec3 dir = normalize(unormDir);
+  const float dist2 = dot(unormDir, unormDir);
+
+  if (unoccluded(Ray(isect.point, dir), sqrt(dist2),
+                 SkipTriangle(true, isect.meshID, isect.begin))) {
+    const float falloff = spotLightFalloff(light, -1.0f * dir);
+    // Be sure there are no negative contributions due to a negative cosine.
+    contribution = light.emission * falloff * max(0.0f, dot(isect.normal, dir))
+                 / dist2;
+    return true;
+  }
+
+  return false;
+}
+
+bool sampleOneLight(const Interaction isect, out vec3 contribution) {
+  const uint numAreaLights = AreaLights.length();
+  const uint numSpotLights = SpotLights.length();
+  const uint numLights = numAreaLights + numSpotLights;
+  if (numLights == 0) return false;
+
+  const uint lightIndex = urand(numLights);
+  bool result;
+  if (lightIndex < numAreaLights) {
+    result = sampleOneAreaLight(lightIndex, isect, contribution);
+  } else {
+    result = sampleOneSpotLight(lightIndex - numAreaLights, isect,
+                              contribution);
+  }
+
+  if (result) {
+    // TODO(renatoutsch): maybe sample ambient light here instead of this hack?
+    const float pdf = float(numLights) + (HasAmbientLight ? 1.0f : 0.0f);
+    contribution /= pdf;
+  }
+  return result;
 }
 
 #endif // !HERAKLES_SHADERS_SAMPLING_GLSL

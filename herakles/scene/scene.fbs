@@ -69,6 +69,29 @@ struct AreaLight {
   meshID: uint;
 }
 
+/// Represents a spot light.
+struct SpotLight {
+  /// Maximum light emission, representing the emission in the center of the
+  /// cone. Falls off to zero outside the cone.
+  emission: vec4;
+
+  /// From point.
+  from: vec3;
+
+  /// Cosine of the angle the spotlight's cone makes with it's primary axis.
+  /// After this angle, the emission is 0.
+  /// This is simply cos(coneAngle).
+  cosTotalWidth: float;
+
+  /// To point.
+  to: vec3;
+
+  /// Cosine of the angle at which the spotlight intensity begins to fall off at
+  /// the edges.
+  /// This is simply cos(coneAngle - coneDelta).
+  cosFalloffStart: float;
+}
+
 struct Mesh {
   /// First triangle vertex index from the Scene indices array.
   begin: uint;
@@ -83,19 +106,46 @@ struct Mesh {
   areaLightID: int;
 }
 
+enum MaterialType : uint {
+  Matte,
+  Glass
+}
+
 struct Material {
-  /// Reflectivity of the diffuse surface.
-  kd: vec4;
+  /// Reflectivity of the surface.
+  /// Used for the following material types:
+  ///   - Matte (means the kd, diffuse reflectivity)
+  ///   - Glass (means the reflectivity of the glass)
+  kr: vec3;
+
+  /// Type of material.
+  type: MaterialType;
+
+  /// Transmissivity of the surface.
+  /// Used for the following material types:
+  ///   - Glass (means the reflectivity of the glass)
+  kt: vec3;
+
+  /// Index of refraction.
+  /// Used for the following material types:
+  ///   - Glass (index of refraction of the glass)
+  eta: float;
 }
 
 table Scene {
   camera: PinholeCamera;
+
+  /// If has ambient light.
+  hasAmbientLight: bool;
 
   /// Ambient light.
   ambientLight: vec3;
 
   /// Area lights.
   areaLights: [AreaLight];
+
+  /// Spot lights.
+  spotLights: [SpotLight];
 
   /// Triangle meshes, each mesh combines triangles and other information from
   /// this Scene table.

@@ -74,13 +74,15 @@ const uint32_t RendererVersion = VK_MAKE_VERSION(0, 0, 0);
 struct UniformBufferObject {
   hk::PinholeCamera camera;
   glm::vec3 ambientLight;
+  uint32_t hasAmbientLight;
   uint32_t frameCount = 0;
 
-  UniformBufferObject(hk::PinholeCamera &&camera,
+  UniformBufferObject(hk::PinholeCamera &&camera, bool hasAmbientLight,
                       const hk::scene::vec3 *ambientLight)
       : camera(camera),
-        ambientLight(glm::vec3(ambientLight->x(), ambientLight->y(),
-                               ambientLight->z())) {}
+        ambientLight(
+            glm::vec3(ambientLight->x(), ambientLight->y(), ambientLight->z())),
+        hasAmbientLight(hasAmbientLight ? 1 : 0) {}
 };
 
 std::vector<uint8_t> readFile(const std::string &filename) {
@@ -111,7 +113,8 @@ class Renderer {
         pipeline_(device_,
                   hk::Shader(shaderFilename, shaderEntryPoint, device_),
                   descriptorSetLayout_),
-        ubo_(scene_->camera(), scene_->ambientLight()) {
+        ubo_(scene_->camera(), scene_->hasAmbientLight(),
+             scene_->ambientLight()) {
     logSceneStats_();
     initializeGPUData_();
     LOG(INFO) << "Renderer initialized";
@@ -199,7 +202,7 @@ class Renderer {
   }
 
   hk::DescriptorSetLayout createDescriptorSetLayout_() {
-    const size_t numBindings = 12;
+    const size_t numBindings = 13;
     std::vector<vk::DescriptorSetLayoutBinding> bindings(numBindings);
     bindings[0]
         .setBinding(0)
@@ -366,8 +369,8 @@ class Renderer {
     return hk::allocateMemory(
         device_, vk::MemoryPropertyFlagBits::eDeviceLocal,
         {uboBuffer_, bvhNodeBuffer_, bvhTriangleBuffer_, areaLightBuffer_,
-         meshBuffer_, materialBuffer_, indexBuffer_, vertexBuffer_,
-         normalBuffer_, uvBuffer_});
+         spotLightBuffer_, meshBuffer_, materialBuffer_, indexBuffer_,
+         vertexBuffer_, normalBuffer_, uvBuffer_});
   }
 
   hk::SharedDeviceMemory createStagingBufferMemory_() {
@@ -395,6 +398,8 @@ class Renderer {
                                      bvhTriangleBuffer_.requestedSize()),
             vk::DescriptorBufferInfo(areaLightBuffer_.vkBuffer(), 0,
                                      areaLightBuffer_.requestedSize()),
+            vk::DescriptorBufferInfo(spotLightBuffer_.vkBuffer(), 0,
+                                     spotLightBuffer_.requestedSize()),
             vk::DescriptorBufferInfo(meshBuffer_.vkBuffer(), 0,
                                      meshBuffer_.requestedSize()),
             vk::DescriptorBufferInfo(materialBuffer_.vkBuffer(), 0,
@@ -417,6 +422,8 @@ class Renderer {
               << bvhTriangleBuffer_.requestedSize() << " bytes)";
     LOG(INFO) << "areaLights()->size(): " << scene_->areaLights()->size()
               << " (" << areaLightBuffer_.requestedSize() << " bytes)";
+    LOG(INFO) << "spotLights()->size(): " << scene_->spotLights()->size()
+              << " (" << spotLightBuffer_.requestedSize() << " bytes)";
     LOG(INFO) << "meshes()->size(): " << scene_->meshes()->size() << " ("
               << meshBuffer_.requestedSize() << " bytes)";
     LOG(INFO) << "materials()->size(): " << scene_->materials()->size() << " ("
@@ -459,6 +466,10 @@ class Renderer {
     if (areaLightBuffer_.requestedSize() > 0) {
       setupBuffer_(areaLightBuffer_,
                    [&]() { return (void *)scene_->areaLights()->Data(); });
+    }
+    if (spotLightBuffer_.requestedSize() > 0) {
+      setupBuffer_(spotLightBuffer_,
+                   [&]() { return (void *)scene_->spotLights()->Data(); });
     }
     setupBuffer_(meshBuffer_,
                  [&]() { return (void *)scene_->meshes()->Data(); });
@@ -535,6 +546,7 @@ class Renderer {
   hk::Buffer bvhNodeBuffer_ = createStorageBuffer_(bvhData_.nodes);
   hk::Buffer bvhTriangleBuffer_ = createStorageBuffer_(bvhData_.triangles);
   hk::Buffer areaLightBuffer_ = createStorageBuffer_(scene_->areaLights());
+  hk::Buffer spotLightBuffer_ = createStorageBuffer_(scene_->spotLights());
   hk::Buffer meshBuffer_ = createStorageBuffer_(scene_->meshes());
   hk::Buffer materialBuffer_ = createStorageBuffer_(scene_->materials());
   hk::Buffer indexBuffer_ = createStorageBuffer_(scene_->indices());

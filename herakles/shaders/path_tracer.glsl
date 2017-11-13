@@ -34,7 +34,8 @@ vec3 radiance(Ray ray) {
   SkipTriangle skip = SkipTriangle(false, 0, 0);
   for (int depth = 0; depth < MAX_DEPTH; ++depth) {
     if (!intersectsScene(ray, skip, isect)) {
-      color += beta * vec3(0.1f);
+      // Poor man's excuse of an infinite area light.
+      color += beta * ambientLight;
       break;
     }
 

@@ -91,6 +91,9 @@ struct Material {
 table Scene {
   camera: PinholeCamera;
 
+  /// Ambient light.
+  ambientLight: vec3;
+
   /// Area lights.
   areaLights: [AreaLight];
 

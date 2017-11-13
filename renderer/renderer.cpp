@@ -73,9 +73,14 @@ const uint32_t RendererVersion = VK_MAKE_VERSION(0, 0, 0);
 
 struct UniformBufferObject {
   hk::PinholeCamera camera;
+  glm::vec3 ambientLight;
   uint32_t frameCount = 0;
 
-  UniformBufferObject(hk::PinholeCamera &&camera) : camera(camera) {}
+  UniformBufferObject(hk::PinholeCamera &&camera,
+                      const hk::scene::vec3 *ambientLight)
+      : camera(camera),
+        ambientLight(glm::vec3(ambientLight->x(), ambientLight->y(),
+                               ambientLight->z())) {}
 };
 
 std::vector<uint8_t> readFile(const std::string &filename) {
@@ -106,7 +111,7 @@ class Renderer {
         pipeline_(device_,
                   hk::Shader(shaderFilename, shaderEntryPoint, device_),
                   descriptorSetLayout_),
-        ubo_(scene_->camera()) {
+        ubo_(scene_->camera(), scene_->ambientLight()) {
     logSceneStats_();
     initializeGPUData_();
     LOG(INFO) << "Renderer initialized";

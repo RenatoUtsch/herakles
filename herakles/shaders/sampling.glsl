@@ -57,7 +57,7 @@ Interaction sampleTriangle(const uint meshID, const uint begin) {
 /// contribution output is set to the light contribution to the intersection.
 /// Be sure the number of area lights is > 1 when calling this.
 bool sampleOneAreaLight(const uint lightIndex, const Interaction isect,
-                     out vec3 contribution) {
+                        const float pdf, out vec3 contribution) {
   const AreaLight light = AreaLights[lightIndex];
   const Mesh mesh = Meshes[light.meshID];
 
@@ -79,7 +79,7 @@ bool sampleOneAreaLight(const uint lightIndex, const Interaction isect,
 
   const float dist2 = dot(unormDir, unormDir);
   const float lightPdf = triangleArea(begin)
-                       * dot(triangleIt.normal, -1.0f * dir) / dist2;
+                       * dot(triangleIt.normal, -1.0f * dir) / (pdf * dist2);
 
   if (unoccluded(Ray(isect.point, dir), sqrt(dist2),
                  SkipTriangle(true, isect.meshID, isect.begin))) {
@@ -108,7 +108,7 @@ float spotLightFalloff(const SpotLight light, const vec3 invDir) {
 /// variable.
 /// Be sure the number of spot lights is > 1 when calling this.
 bool sampleOneSpotLight(const uint lightIndex, const Interaction isect,
-                        out vec3 contribution) {
+                        const float pdf, out vec3 contribution) {
   const SpotLight light = SpotLights[lightIndex];
   const vec3 unormDir = light.from - isect.point;
   const vec3 dir = normalize(unormDir);
@@ -119,7 +119,7 @@ bool sampleOneSpotLight(const uint lightIndex, const Interaction isect,
     const float falloff = spotLightFalloff(light, -1.0f * dir);
     // Be sure there are no negative contributions due to a negative cosine.
     contribution = light.emission * falloff * max(0.0f, dot(isect.normal, dir))
-                 / dist2;
+                 / (pdf * dist2);
     return true;
   }
 
@@ -133,20 +133,13 @@ bool sampleOneLight(const Interaction isect, out vec3 contribution) {
   if (numLights == 0) return false;
 
   const uint lightIndex = urand(numLights);
-  bool result;
+  const float pdf = float(numLights) + (HasAmbientLight ? 1.0f : 0.0f);
   if (lightIndex < numAreaLights) {
-    result = sampleOneAreaLight(lightIndex, isect, contribution);
+    return sampleOneAreaLight(lightIndex, isect, pdf, contribution);
   } else {
-    result = sampleOneSpotLight(lightIndex - numAreaLights, isect,
+    return sampleOneSpotLight(lightIndex - numAreaLights, isect, pdf,
                               contribution);
   }
-
-  if (result) {
-    // TODO(renatoutsch): maybe sample ambient light here instead of this hack?
-    const float pdf = float(numLights) + (HasAmbientLight ? 1.0f : 0.0f);
-    contribution /= pdf;
-  }
-  return result;
 }
 
 #endif // !HERAKLES_SHADERS_SAMPLING_GLSL

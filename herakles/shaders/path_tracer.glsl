@@ -21,6 +21,7 @@
 #ifndef HERAKLES_SHADERS_PATH_TRACER_GLSL
 #define HERAKLES_SHADERS_PATH_TRACER_GLSL
 
+#include "bsdf.glsl"
 #include "random.glsl"
 #include "scene.glsl"
 #include "sampling.glsl"

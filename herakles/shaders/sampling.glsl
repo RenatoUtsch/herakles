@@ -24,6 +24,7 @@
 #include "random.glsl"
 #include "scene.glsl"
 #include "intersection.glsl"
+#include "utils.glsl"
 
 /// Returns the (s, t) barycentric coordinates of an uniform triangle sample.
 /// PBRTv3 page 781.
@@ -78,8 +79,8 @@ bool sampleOneAreaLight(const uint lightIndex, const Interaction isect,
   }
 
   const float dist2 = dot(unormDir, unormDir);
-  const float lightPdf = triangleArea(begin)
-                       * dot(triangleIt.normal, -1.0f * dir) / (pdf * dist2);
+  const float lightPdf = triangleArea(begin) * absDot(isect.normal, dir)
+                       * absDot(triangleIt.normal, -1.0f * dir) / (pdf * dist2);
 
   if (unoccluded(Ray(isect.point, dir), sqrt(dist2),
                  SkipTriangle(true, isect.meshID, isect.begin))) {
@@ -117,8 +118,7 @@ bool sampleOneSpotLight(const uint lightIndex, const Interaction isect,
   if (unoccluded(Ray(isect.point, dir), sqrt(dist2),
                  SkipTriangle(true, isect.meshID, isect.begin))) {
     const float falloff = spotLightFalloff(light, -1.0f * dir);
-    // Be sure there are no negative contributions due to a negative cosine.
-    contribution = light.emission * falloff * max(0.0f, dot(isect.normal, dir))
+    contribution = light.emission * falloff * absDot(isect.normal, dir)
                  / (pdf * dist2);
     return true;
   }

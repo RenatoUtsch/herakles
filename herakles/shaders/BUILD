@@ -22,6 +22,7 @@ glsl_library(
     deps = [
         ":random",
         ":scene",
+        ":utils",
     ],
 )
 

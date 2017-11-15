@@ -61,6 +61,9 @@ vec3 radiance(Ray ray) {
     float pdf;
     const vec3 f = sampleBSDF(isect, ray.direction, wi, pdf,
                               perfectlySpecularBounce);
+    if (pdf == 0.0f) {
+      break;
+    }
 
     // Update the reflectance.
     beta *= f * absDot(wi, isect.normal) / pdf;

@@ -21,8 +21,14 @@
 #ifndef HERAKLES_SHADERS_UTILS_GLSL
 #define HERAKLES_SHADERS_UTILS_GLSL
 
-float absDot(vec3 v1, vec3 v2) {
+float absDot(const vec3 v1, const vec3 v2) {
   return abs(dot(v1, v2));
+}
+
+void swap(inout float a, inout float b) {
+  const float c = a;
+  a = b;
+  b = c;
 }
 
 #endif // !HERAKLES_SHADERS_UTILS_GLSL

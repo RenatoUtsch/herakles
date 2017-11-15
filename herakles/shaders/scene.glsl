@@ -29,11 +29,12 @@
 
 
 const uint NUM_SAMPLES = 1;
-const uint MAX_DEPTH = 4;
+const uint MAX_DEPTH = 20;
 
 const float EPSILON = 1e-7;
 const float INF = 1e20;
-const float M_PI = 3.14159265359f;
+const float M_PI = 3.14159265358979323846;
+const float M_1_PI = 0.31830988618379067154;
 
 #define GAMMA(n) (((n) * EPSILON) / (1.0f - (n) * EPSILON))
 const float GAMMA_3 = GAMMA(3.0f);

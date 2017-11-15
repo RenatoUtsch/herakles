@@ -23,6 +23,7 @@
 
 #include "random.glsl"
 #include "scene.glsl"
+#include "utils.glsl"
 
 vec3 sampleMatte(const Interaction isect, const Material material,
                  const vec3 invWo, out vec3 wi, out float pdf,
@@ -45,44 +46,46 @@ vec3 sampleMatte(const Interaction isect, const Material material,
   return material.kr;
 }
 
+float fresnelDielectric(const float cosThetaI, const float etaI,
+                        const float etaT) {
+  const float sinThetaI = sqrt(max(0.0f, 1.0f - cosThetaI * cosThetaI));
+  const float sinThetaT = etaI / etaT * sinThetaI;
+
+  if (sinThetaT >= 1.0f) {  // Total internal reflection.
+    return 1.0f;
+  }
+
+  const float cosThetaT = sqrt(max(0.0f, 1.0f - sinThetaT * sinThetaT));
+
+  const float etaTthetaI = etaT * cosThetaI;
+  const float etaIthetaT = etaI * cosThetaT;
+  const float etaIthetaI = etaI * cosThetaI;
+  const float etaTthetaT = etaT * cosThetaT;
+  const float Rparl = (etaTthetaI - etaIthetaT) / (etaTthetaI + etaIthetaT);
+  const float Rperp = (etaIthetaI - etaTthetaT) / (etaIthetaI + etaTthetaT);
+
+  return (Rparl * Rparl + Rperp * Rperp) / 2.0f;
+}
+
 vec3 sampleGlass(const Interaction isect, const Material material,
                  const vec3 invWo, out vec3 wi, out float pdf,
                  out bool perfectlySpecular) {
-  const vec3 unorientedNormal = isect.backface ? -1.0f * isect.normal
-                                               : isect.normal;
-  const vec3 reflected = reflect(invWo, unorientedNormal);
-  const float nc = 1.0f, nt = material.eta;
-  const float nnt = isect.backface ? nt / nc : nc / nt;
-  const float ddn = dot(invWo, isect.normal);
-  const float cos2t = 1.0f - nnt * nnt * (1.0f - ddn * ddn);
-
-  // Total internal reflection
-  perfectlySpecular = false;
-  if (cos2t <= -EPSILON) {
-    wi = reflected;
-    pdf = 1.0f;
-    return material.kr;
+  const float cosDirNormal = clamp(dot(-1.0f * invWo, isect.normal), 0.0f, 1.0f);
+  float etaI = 1.0f, etaT = material.eta;
+  if (isect.backface) {  // Guarantee etaI has the IOR of the incident medium.
+    swap(etaI, etaT);
   }
 
-  // Choose reflection or refraction
-  const vec3 tdir = normalize(invWo * nnt - unorientedNormal * (
-      ((isect.backface ? -1.0f : 1.0f) * (ddn * nnt + sqrt(cos2t)))));
-  const float a = nt - nc;
-  const float b = nt + nc;
-  const float r0 = a * a / (b * b);
-  const float c = 1.0f - (isect.backface ? dot(tdir, unorientedNormal) : -ddn);
-  const float re = r0 + (1.0f - r0) * c * c * c * c * c;
-  const float tr = 1.0f - re;
-  const float p = 0.25f + 0.5f * re;
-
-  if (rand() - p <= -EPSILON) { // Russian roulette
-    wi = reflected;
-    pdf = p;
-    return material.kr * re;
-  } else {
-    wi = tdir;
-    pdf = 1.0f - p;
-    return material.kt * tr;
+  perfectlySpecular = true;
+  const float f = fresnelDielectric(cosDirNormal, etaI, etaT);
+  if (rand() < f) {  // Specular reflection
+    wi = reflect(invWo, isect.normal);
+    pdf = 1.0f;
+    return material.kr / absDot(wi, isect.normal);
+  } else {  // Specular transmission
+    wi = refract(invWo, isect.normal, etaI / etaT);
+    pdf = 1.0f;
+    return  material.kt / absDot(wi, isect.normal);
   }
 }
 
@@ -92,7 +95,7 @@ vec3 sampleMirror(const Interaction isect, const Material material,
   wi = reflect(invWo, isect.normal);
   pdf = 1.0f;
   perfectlySpecular = true;
-  return material.kr;
+  return material.kr / absDot(wi, isect.normal);
 }
 
 vec3 sampleBSDF(const Interaction isect, const vec3 invWo, out vec3 wi,

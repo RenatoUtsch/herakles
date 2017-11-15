@@ -35,7 +35,7 @@ float triangleArea(const uint begin) {
 /// Triangle intersection.
 /// Normal is not normalized and not oriented.
 bool intersectsTriangle(const Ray ray, const uint begin, out float t,
-                       out vec2 st) {
+                       out vec3 n, out vec2 st) {
   const vec3 v0 = Vertices[Indices[begin]];
   const vec3 v0v1 = Vertices[Indices[begin + 1]] - v0;
   const vec3 v0v2 = Vertices[Indices[begin + 2]] - v0;
@@ -59,6 +59,7 @@ bool intersectsTriangle(const Ray ray, const uint begin, out float t,
   }
 
   t = dot(v0v2, qvec) * invDet;
+  n = normalize(cross(v0v1, v0v2));
   return true;
 }
 
@@ -94,6 +95,7 @@ bool intersectsScene(const Ray ray, const SkipTriangle skip,
   float t = INF;
   uint meshID = 0;
   uint begin = 0;
+  vec3 n;
   vec2 st;
 
   uint nodesToVisit[64];
@@ -102,6 +104,7 @@ bool intersectsScene(const Ray ray, const SkipTriangle skip,
 
   float currT;
   vec2 currST;
+  vec3 currN;
   uint numTriangles, splitAxis;
   while (toVisitOffset >= 0) {
     const uint currentNode = nodesToVisit[toVisitOffset--];
@@ -126,12 +129,13 @@ bool intersectsScene(const Ray ray, const SkipTriangle skip,
               && triangle.begin == skip.begin) {
             continue;
           }
-          if (intersectsTriangle(ray, triangle.begin, currT, currST) &&
+          if (intersectsTriangle(ray, triangle.begin, currT, currN, currST) &&
               currT <= t - EPSILON && currT > EPSILON) {
             hit = true;
             t = currT;
             meshID = triangle.meshID;
             begin = triangle.begin;
+            n = currN;
             st = currST;
           }
         }
@@ -143,15 +147,16 @@ bool intersectsScene(const Ray ray, const SkipTriangle skip,
     return false;
   }
 
-  const vec3 normal = Normals[Indices[begin]] * st.s
-                    + Normals[Indices[begin + 1]] * st.t
-                    + Normals[Indices[begin + 2]] * (1.0f - st.s - st.t);
-  const bool backface = dot(normal, ray.direction) <= -EPSILON ? false : true;
+  // Shading normal disabled for now. Should not be used with Fresnel BSDFs.
+  /* n = Normals[Indices[begin]] * st.s */
+  /*   + Normals[Indices[begin + 1]] * st.t */
+  /*   + Normals[Indices[begin + 2]] * (1.0f - st.s - st.t); */
+  const bool backface = dot(-1.0f * ray.direction, n) < 0.0f;
 
   isect = Interaction(
       ray.origin + ray.direction * t,
       meshID,
-      backface ? normal * -1.0f : normal,
+      backface ? n * -1.0f : n,
       backface,
       begin);
 
@@ -175,6 +180,7 @@ bool unoccluded(const Ray ray, const float dist, const SkipTriangle skip) {
 
   float currT;
   vec2 currST;
+  vec3 currN;
   uint numTriangles, splitAxis;
   while (toVisitOffset >= 0) {
     const uint currentNode = nodesToVisit[toVisitOffset--];
@@ -199,7 +205,7 @@ bool unoccluded(const Ray ray, const float dist, const SkipTriangle skip) {
               && triangle.begin == skip.begin) {
             continue;
           }
-          if (intersectsTriangle(ray, triangle.begin, currT, currST) &&
+          if (intersectsTriangle(ray, triangle.begin, currT, currN, currST) &&
               currT <= minT - EPSILON && currT > EPSILON) {
             return false;
           }

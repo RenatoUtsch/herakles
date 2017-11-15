@@ -108,7 +108,8 @@ struct Mesh {
 
 enum MaterialType : uint {
   Matte,
-  Glass
+  Glass,
+  Mirror
 }
 
 struct Material {

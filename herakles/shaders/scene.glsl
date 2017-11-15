@@ -100,8 +100,9 @@ struct Mesh {
 };
 
 /// Material types.
-const uint Matte = 0;
-const uint Glass = 1;
+const uint MatteMaterial = 0;
+const uint GlassMaterial = 1;
+const uint MirrorMaterial = 2;
 
 /**
  * Represents a single mesh's material. 
@@ -113,7 +114,7 @@ struct Material {
   /// Material type.
   uint type;
 
-  /// Transmissitivity of the surface.
+  /// Transmissivity of the surface.
   vec3 kt;
 
   /// Index of refraction.

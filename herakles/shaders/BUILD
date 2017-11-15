@@ -43,6 +43,7 @@ glsl_library(
         ":random",
         ":sampling",
         ":scene",
+        ":utils",
     ],
 )
 

@@ -132,7 +132,7 @@ bool sampleOneSpotLight(const uint spotLightIndex, const Interaction isect,
   if (unoccluded(Ray(isect.point, dir), sqrt(dist2),
                  SkipTriangle(true, isect.meshID, isect.begin))) {
     const float falloff = spotLightFalloff(light, -1.0f * dir);
-    contribution = light.emission * falloff * absDot(isect.normal, dir)
+    contribution = light.emission * falloff * absDot(dir, isect.normal)
                  / (pdf * dist2);
     return true;
   }

@@ -25,15 +25,17 @@
 #ifndef HERAKLES_SHADERS_SCENE_GLSL
 #define HERAKLES_SHADERS_SCENE_GLSL
 
+#extension GL_NV_shader_atomic_float : enable
+
 // (u, v) = (s, t) for coordinates in Herakles.
 
 // Rendering strategies.
 const uint PathTracingStrategy = 0;
 const uint BDPTStrategy = 1;
 
-const uint RenderingStrategy = 1;
+const uint RenderingStrategy = PathTracingStrategy;
 const uint NumSamples = 1;
-const uint CameraPathLength = 8;
+const uint CameraPathLength = 4;
 const uint LightPathLength = 1;  // Only useful for BDPT.
 
 const float EPSILON = 1e-7;

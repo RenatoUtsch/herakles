@@ -51,4 +51,9 @@ vec3 sphericalDirection(float sinTheta, float cosTheta, float phi,
  return cos(phi) * sinTheta * x + sin(phi) * sinTheta * y + cosTheta * z;
 }
 
+// If the given color is black.
+bool isBlack(const vec3 color) {
+  return color.x < EPSILON && color.y < EPSILON && color.z < EPSILON;
+}
+
 #endif // !HERAKLES_SHADERS_UTILS_GLSL

@@ -41,41 +41,41 @@ struct LightInteraction {
   // Path size.
   uint s;
 
+  // If is connectible.
+  bool connectible;
+
   // Light contribution.
   vec3 color;
 };
 
-bool connectSubpaths(const Interaction isect, const LightInteraction lightIsect,
+bool connectSubpaths(const vec3 origin, const vec3 beta,
+                     const SkipTriangle skip, const LightInteraction lightIsect,
                      out vec3 lightColor) {
-  const vec3 unormDir = lightIsect.isect.point - isect.point;
+  const vec3 unormDir = lightIsect.isect.point - origin;
   const vec3 dir = normalize(unormDir);
   const float dist2 = dot(unormDir, unormDir);
-  const float dist = sqrt(dist2);
-  const Ray ray = Ray(isect.point, dir);
-  const SkipTriangle skipTriangle = SkipTriangle(true, isect.meshID,
-                                                 isect.begin);
+  const Ray ray = Ray(origin, dir);
 
   float pdf = 1.0f;
   if (lightIsect.s == 1) {
     // Sampling light directly. Need to get the light's pdf.
-    vec3 normal;
     float pdfLight, pdfPos, pdfDir;
     if (!sampleLightPdf(ray, lightIsect.isect.normal, lightIsect.lightIndex,
                         pdfLight, pdfPos, pdfDir)) {
       return false;
     }
 
-    pdf = absDot(lightIsect.isect.normal, dir)
-        / (pdfLight * pdfPos * pdfDir * dist2);
+    pdf = pdfLight * pdfPos * pdfDir * dist2;
+  }
+
+  lightColor = lightIsect.color * beta * absDot(dir, lightIsect.isect.normal)
+             / pdf;
+  if (isBlack(lightColor)) {
+    return false;
   }
 
   // Connecting two paths, just need to check whether they are occluded.
-  if (unoccluded(ray, dist, skipTriangle)) {
-    lightColor = lightIsect.color * pdf;
-    return true;
-  }
-
-  return false;
+  return unoccluded(ray, sqrt(dist2), skip);
 }
 
 /// Generates the light subpath.
@@ -88,7 +88,7 @@ LightInteraction generateLightSubpath() {
                                       pdfDir);
   if (le == vec3(0.0f)) {  // No lights to sample, return no contribution.
     return LightInteraction(Interaction(vec3(0.0f), 0, vec3(0.0f), false, 0),
-                            lightIndex, 0, vec3(0.0f));
+                            lightIndex, 0, false, vec3(0.0f));
   }
 
   vec3 color = le * absDot(normal, ray.direction) / (pdfLight * pdfPos * pdfDir);
@@ -127,7 +127,8 @@ LightInteraction generateLightSubpath() {
                            isect.backface, isect.begin);
   }
 
-  return LightInteraction(oldIsect, lightIndex, s, color);
+  return LightInteraction(oldIsect, lightIndex, s, !perfectlySpecularBounce,
+                          color);
 }
 
 /// Generates and connects the camera subpath to the light subpath.
@@ -135,10 +136,18 @@ vec3 generateCameraSubpath(Ray ray, const LightInteraction lightIsect) {
   vec3 color = vec3(0.0f);
   vec3 beta = vec3(1.0f);
   bool perfectlySpecularBounce = false;
+  vec3 lightColor;
+  SkipTriangle skip = SkipTriangle(false, 0, 0);
+
+  // TODO(renatoutsch): this doesn't work. The color needs to be splatted to the
+  // correct pixel.
+  if (lightIsect.connectible &&
+      connectSubpaths(ray.origin, beta, skip, lightIsect, lightColor)) {
+    color += lightColor;
+  }
 
   uint t;
   Interaction isect;
-  SkipTriangle skip = SkipTriangle(false, 0, 0);
   for(t = 1; t <= CameraPathLength; ++t) {
     if (!intersectsScene(ray, skip, isect)) {
       // Poor man's excuse of an infinite area light.
@@ -147,6 +156,7 @@ vec3 generateCameraSubpath(Ray ray, const LightInteraction lightIsect) {
       }
       break;
     }
+    skip = SkipTriangle(true, isect.meshID, isect.begin);
 
     const Mesh mesh = Meshes[isect.meshID];
     if (mesh.areaLightID >= 0) {
@@ -162,17 +172,17 @@ vec3 generateCameraSubpath(Ray ray, const LightInteraction lightIsect) {
                               perfectlySpecularBounce);
 
     // Update the reflectance.
-    beta *= f * absDot(wi, isect.normal) / pdf;
+    beta *= f / pdf;
 
     // Attempt to connect the current path to the light's subpath.
-    vec3 lightColor;
-    if (!perfectlySpecularBounce &&
-        connectSubpaths(isect, lightIsect, lightColor)) {
-      color += beta * lightColor;
+    if (!perfectlySpecularBounce && lightIsect.connectible &&
+        connectSubpaths(isect.point, beta, skip, lightIsect, lightColor)) {
+      color += lightColor;
     }
 
+    beta *= absDot(wi, isect.normal);
+
     ray = Ray(isect.point, wi);
-    skip = SkipTriangle(true, isect.meshID, isect.begin);
   }
 
   return color;

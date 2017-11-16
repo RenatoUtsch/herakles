@@ -41,9 +41,9 @@ vec3 sampleMatte(const Interaction isect, const Material material,
   wi = normalize(u * cos(theta) * phi +
                  v * sin(theta) * phi +
                  w * sqrt(1.0f - u2));
-  pdf = 1.0f;
+  pdf = absDot(wi, isect.normal) * M_1_PI;
   perfectlySpecular = false;
-  return material.kr;
+  return M_1_PI * material.kr;
 }
 
 float fresnelDielectric(const float cosThetaI, const float etaI,
@@ -80,12 +80,12 @@ vec3 sampleGlass(const Interaction isect, const Material material,
   const float f = fresnelDielectric(cosDirNormal, etaI, etaT);
   if (rand() < f) {  // Specular reflection
     wi = reflect(invWo, isect.normal);
-    pdf = 1.0f;
-    return material.kr / absDot(wi, isect.normal);
+    pdf = f;
+    return f * material.kr / absDot(wi, isect.normal);
   } else {  // Specular transmission
     wi = refract(invWo, isect.normal, etaI / etaT);
-    pdf = 1.0f;
-    return  material.kt / absDot(wi, isect.normal);
+    pdf = 1.0f - f;
+    return  (1.0f - f) * material.kt / absDot(wi, isect.normal);
   }
 }
 

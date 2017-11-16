@@ -17,6 +17,19 @@ load("@com_github_renatoutsch_rules_spirv//glsl:defs.bzl", "glsl_library")
 package(default_visibility = ["//visibility:public"])
 
 glsl_library(
+    name = "bdpt",
+    srcs = ["bdpt.glsl"],
+    deps = [
+        ":bsdf",
+        ":intersection",
+        ":random",
+        ":sampling",
+        ":scene",
+        ":utils",
+    ],
+)
+
+glsl_library(
     name = "bsdf",
     srcs = ["bsdf.glsl"],
     deps = [

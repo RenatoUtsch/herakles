@@ -29,13 +29,13 @@
 #include "utils.glsl"
 
 /// Returns estimated radiance along ray.
-vec3 radiance(Ray ray) {
+vec3 pathTracingRadiance(Ray ray) {
   vec3 color = vec3(0.0f);
   vec3 beta = vec3(1.0f);
   bool perfectlySpecularBounce = false;
   Interaction isect;
   SkipTriangle skip = SkipTriangle(false, 0, 0);
-  for (int depth = 0; depth < MAX_DEPTH; ++depth) {
+  for (uint depth = 0; depth < CameraPathLength; ++depth) {
     if (!intersectsScene(ray, skip, isect)) {
       // Poor man's excuse of an infinite area light.
       if (HasAmbientLight) {
@@ -61,9 +61,6 @@ vec3 radiance(Ray ray) {
     float pdf;
     const vec3 f = sampleBSDF(isect, ray.direction, wi, pdf,
                               perfectlySpecularBounce);
-    if (pdf == 0.0f) {
-      break;
-    }
 
     // Update the reflectance.
     beta *= f * absDot(wi, isect.normal) / pdf;

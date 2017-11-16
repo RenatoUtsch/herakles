@@ -35,6 +35,20 @@ vec2 uniformTriangleST() {
   return vec2(1 - su0, u1 * su0);
 }
 
+/// PDF of an uniformly sampled cone.
+float uniformConePdf(float cosThetaMax) {
+  return 1.0f / (2.0f * M_PI * (1.0f - cosThetaMax));
+}
+
+/// Samples a cone going in the z direction uniformly.
+vec3 uniformSampleCone(float cosThetaMax, const vec3 x, const vec3 y,
+                       const vec3 z) {
+  const float cosTheta = lerp(rand(), cosThetaMax, 1.0f);
+  const float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+  const float phi = rand() * 2 * M_PI;
+  return sphericalDirection(sinTheta, cosTheta, phi, x, y, z);
+}
+
 /// Uniformly samples a point in a triangle.
 /// Returns the interaction. This interaction has an unoriented normal and
 /// 'backface' is always false. It's your responsibility to check for
@@ -57,9 +71,9 @@ Interaction sampleTriangle(const uint meshID, const uint begin) {
 /// Returns if there is any light contribution to isect or not. If there is, the
 /// contribution output is set to the light contribution to the intersection.
 /// Be sure the number of area lights is > 1 when calling this.
-bool sampleOneAreaLight(const uint lightIndex, const Interaction isect,
+bool sampleOneAreaLight(const uint areaLightIndex, const Interaction isect,
                         const float pdf, out vec3 contribution) {
-  const AreaLight light = AreaLights[lightIndex];
+  const AreaLight light = AreaLights[areaLightIndex];
   const Mesh mesh = Meshes[light.meshID];
 
   // Chooses a triangle from the mesh at random.
@@ -108,9 +122,9 @@ float spotLightFalloff(const SpotLight light, const vec3 invDir) {
 /// isect or not, with the potential contribution set in the contribution
 /// variable.
 /// Be sure the number of spot lights is > 1 when calling this.
-bool sampleOneSpotLight(const uint lightIndex, const Interaction isect,
+bool sampleOneSpotLight(const uint spotLightIndex, const Interaction isect,
                         const float pdf, out vec3 contribution) {
-  const SpotLight light = SpotLights[lightIndex];
+  const SpotLight light = SpotLights[spotLightIndex];
   const vec3 unormDir = light.from - isect.point;
   const vec3 dir = normalize(unormDir);
   const float dist2 = dot(unormDir, unormDir);
@@ -139,6 +153,94 @@ bool sampleOneLight(const Interaction isect, out vec3 contribution) {
   } else {
     return sampleOneSpotLight(lightIndex - numAreaLights, isect, pdf,
                               contribution);
+  }
+}
+
+/// Samples an area light source for emitted light.
+vec3 sampleAreaLightEmission(
+    const uint areaLightIndex, out Ray ray, out vec3 normal, out float pdfPos,
+    out float pdfDir) {
+  // TODO(renatoutsch): implement this.
+  return vec3(0.0f);
+}
+
+/// Samples an area light source's PDF. Returns if there's any contribution.
+bool sampleAreaLightPdf(
+      const uint areaLightIndex, const Ray ray, const vec3 normal,
+      out float pdfPos, out float pdfDir) {
+  // TODO(renatoutsch): implement this.
+  return false;
+}
+
+/// Samples a spot light source for emitted light.
+vec3 sampleSpotLightEmission(
+      const uint spotLightIndex, out Ray ray, out vec3 normal, out float pdfPos,
+      out float pdfDir) {
+  const SpotLight light = SpotLights[spotLightIndex];
+
+  const vec3 axis = normalize(light.to - light.from);
+  vec3 dx, dy;
+  coordinateSystem(axis, dx, dy);
+
+  const vec3 w = uniformSampleCone(light.cosTotalWidth, dx, dy, axis);
+  ray = Ray(light.from, w);
+  normal = ray.direction;
+  pdfPos = 1.0f;
+  pdfDir = uniformConePdf(light.cosTotalWidth);
+  return light.emission * spotLightFalloff(light, ray.direction);
+}
+
+/// Samples a spot light source's PDF. Returns if there is any contribution.
+bool sampleSpotLightPdf(
+      const uint spotLightIndex, const Ray ray, const vec3 normal,
+      out float pdfPos, out float pdfDir) {
+  const SpotLight light = SpotLights[spotLightIndex];
+  const vec3 axis = normalize(light.to - light.from);
+  const float cosTheta = dot(-1.0f * ray.direction, axis);
+
+  if (cosTheta >= light.cosTotalWidth) {
+    pdfPos = 1.0f;
+    pdfDir = uniformConePdf(light.cosTotalWidth)
+           / spotLightFalloff(light, -1.0f * ray.direction);
+    return true;
+  }
+
+  return false;
+}
+
+/// Samples a random light source for emitted light.
+vec3 sampleLightEmission(
+      out uint lightIndex, out Ray ray, out vec3 normal, out float pdfLight,
+      out float pdfPos, out float pdfDir) {
+  const uint numAreaLights = AreaLights.length();
+  const uint numSpotLights = SpotLights.length();
+  const uint numLights = numAreaLights + numSpotLights;
+  if (numLights == 0) return vec3(0.0f);
+
+  lightIndex = urand(numLights);
+  pdfLight = float(numLights) + (HasAmbientLight ? 1.0f : 0.0f);
+  if (lightIndex < numAreaLights) {
+    return sampleAreaLightEmission(lightIndex, ray, normal, pdfPos, pdfDir);
+  } else {
+    return sampleSpotLightEmission(lightIndex - numAreaLights, ray, normal,
+                                   pdfPos, pdfDir);
+  }
+}
+
+/// Samples a random light Pdf. Assumes there are lights to sample, except
+/// ambient light. Returns if there is any contribution.
+bool sampleLightPdf(const Ray ray, const vec3 normal, const uint lightIndex,
+                    out float pdfLight, out float pdfPos, out float pdfDir) {
+  const uint numAreaLights = AreaLights.length();
+  const uint numSpotLights = SpotLights.length();
+  const uint numLights = numAreaLights + numSpotLights;
+  pdfLight = float(numLights) + (HasAmbientLight ? 1.0f : 0.0f);
+
+  if (lightIndex < numAreaLights) {
+    return sampleAreaLightPdf(lightIndex, ray, normal, pdfPos, pdfDir);
+  } else {
+    return sampleSpotLightPdf(lightIndex - numAreaLights, ray, normal,
+                              pdfPos, pdfDir);
   }
 }
 

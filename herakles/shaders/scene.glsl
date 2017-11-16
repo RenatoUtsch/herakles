@@ -27,9 +27,14 @@
 
 // (u, v) = (s, t) for coordinates in Herakles.
 
+// Rendering strategies.
+const uint PathTracingStrategy = 0;
+const uint BDPTStrategy = 1;
 
-const uint NUM_SAMPLES = 1;
-const uint MAX_DEPTH = 20;
+const uint RenderingStrategy = 1;
+const uint NumSamples = 1;
+const uint CameraPathLength = 8;
+const uint LightPathLength = 1;  // Only useful for BDPT.
 
 const float EPSILON = 1e-7;
 const float INF = 1e20;
@@ -186,7 +191,7 @@ struct Interaction {
   /// has already been inverted automatically.
   bool backface;
 
-  /// Triangle beginning
+  /// Triangle beginning.
   uint begin;
 };
 

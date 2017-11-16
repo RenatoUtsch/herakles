@@ -20,6 +20,7 @@ glsl_binary(
     name = "main",
     srcs = ["main.comp"],
     deps = [
+        "//herakles/shaders:bdpt",
         "//herakles/shaders:path_tracer",
         "//herakles/shaders:random",
         "//herakles/shaders:scene",

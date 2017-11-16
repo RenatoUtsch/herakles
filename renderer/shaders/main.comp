@@ -18,6 +18,7 @@
  * Entry point to the Herakles renderer.
  */
 
+#include "herakles/shaders/bdpt.glsl"
 #include "herakles/shaders/path_tracer.glsl"
 #include "herakles/shaders/random.glsl"
 #include "herakles/shaders/scene.glsl"
@@ -35,23 +36,28 @@ void main() {
   const vec3 cy = Camera.up * Camera.fov;
 
   vec3 color = vec3(0.0f);
-  for (int i = 0; i < NUM_SAMPLES; ++i) {
+  for (int i = 0; i < NumSamples; ++i) {
     const float r1 = 2.0f * rand(), dx = r1 < 1.0f ? sqrt(r1) - 1.0f : 1.0f - sqrt(2.f - r1);
     const float r2 = 2.0f * rand(), dy = r2 < 1.0f ? sqrt(r2) - 1.0f : 1.0f - sqrt(2.f - r2);
     vec3 direction = cx * ((pixelIndex.x + 0.5 + dx) / resolution.x - 0.5)
                    - cy * ((pixelIndex.y + 0.5 + dy) / resolution.y - 0.5)
                    + Camera.direction;
-    color += radiance(Ray(Camera.position,
-                          normalize(direction)));
+    if (RenderingStrategy == PathTracingStrategy) {
+      color += pathTracingRadiance(Ray(Camera.position, normalize(direction)));
+    } else if (RenderingStrategy == BDPTStrategy) {
+      color += bdptRadiance(Ray(Camera.position, normalize(direction)));
+    } else {
+      color = vec3(rand(), rand(), rand());  // Just random sampling.
+    }
   }
 
   // gamma correction.
-  color = pow(color / NUM_SAMPLES, vec3(1.0f / 2.2f));
+  color = pow(color / NumSamples, vec3(1.0f / 2.2f));
 
   // Adding old color.
   vec3 oldColor = imageLoad(Image, pixelPos).xyz;
-  color = (oldColor * FrameCount * NUM_SAMPLES + color * NUM_SAMPLES) /
-          (FrameCount * NUM_SAMPLES + NUM_SAMPLES);
+  color = (oldColor * FrameCount * NumSamples + color * NumSamples) /
+          (FrameCount * NumSamples + NumSamples);
 
   color = clamp(color, 0.0f, 1.0f);
   imageStore(Image, pixelPos, vec4(color, 1.0f));

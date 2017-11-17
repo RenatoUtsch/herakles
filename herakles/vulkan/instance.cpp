@@ -119,7 +119,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallbackFunction_(
   } else if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
     LOG(WARNING) << outputMessage.str();
   } else {
-    LOG(INFO) << outputMessage.str();
+    VLOG(1) << outputMessage.str();
   }
 
   return VK_FALSE;

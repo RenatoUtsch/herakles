@@ -255,12 +255,14 @@ class PhysicalDevice {
  * needed by Herakles and the given surface.
  *
  * @param surface The surface that needs to be supported by the physical device.
+ * @param extraExtensions Extra extensions to be enabled in the device.
  * @return The selected physical device.
  * @throws error::NoSuitablePhysicalDeviceFoundError If no suitable physical
  *   devices were found.
  */
-PhysicalDevice pickPhysicalDevice(const Instance &instance,
-                                  const Surface &surface);
+PhysicalDevice pickPhysicalDevice(
+    const Instance &instance, const Surface &surface,
+    const std::vector<const char *> &extraExtensions = {});
 
 }  // namespace hk
 

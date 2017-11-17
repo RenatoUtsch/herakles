@@ -16,6 +16,8 @@
 
 #include "herakles/vulkan/device.hpp"
 
+#include <glog/logging.h>
+
 namespace hk {
 namespace {
 
@@ -54,9 +56,9 @@ Device::Device(const Instance &instance, const PhysicalDevice &physicalDevice,
   createInfo.setQueueCreateInfoCount(queueCreateInfos.size())
       .setPQueueCreateInfos(queueCreateInfos.data());
 
-  const auto &requiredExtensions = physicalDevice.requiredDeviceExtensions();
-  createInfo.setEnabledExtensionCount(requiredExtensions.size())
-      .setPpEnabledExtensionNames(requiredExtensions.data());
+  const auto &extensions = physicalDevice.requiredDeviceExtensions();
+  createInfo.setEnabledExtensionCount(extensions.size())
+      .setPpEnabledExtensionNames(extensions.data());
 
   const auto validationLayers = getRequiredValidationLayers_(
       instance.validationLayers(), extraValidationLayers);

@@ -177,7 +177,7 @@ class Image {
   }
 
   /**
-   * Returns the size memory requirements size.
+   * Returns the memory requirements size.
    * This will NOT return a meaningful value unless the allocation is managed
    * by this class.
    */

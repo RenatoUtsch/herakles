@@ -16,6 +16,8 @@
 
 #include "herakles/vulkan/physical_device.hpp"
 
+#include "herakles/vulkan/utils.hpp"
+
 #include <set>
 
 #include <glog/logging.h>
@@ -215,6 +217,8 @@ void PhysicalDevice::checkForExtensionSupport_() {
   // If all extensions are supported, requiredExtensionSet will now be empty.
   CHECK(requiredExtensionSet.empty())
       << "Not all device extensions are supported.";
+  LOG(INFO) << "deviceExtensions: "
+            << stringJoin(requiredDeviceExtensions_, ", ");
 }
 
 void PhysicalDevice::checkForSwapchainSupport_(const Surface &surface) {
@@ -246,14 +250,16 @@ void PhysicalDevice::saveQueueFamilyIndices_() {
                              indices.end());
 }
 
-PhysicalDevice pickPhysicalDevice(const Instance &instance,
-                                  const Surface &surface) {
+PhysicalDevice pickPhysicalDevice(
+    const Instance &instance, const Surface &surface,
+    const std::vector<const char *> &extraExtensions) {
   LOG(INFO) << "Picking a physical device";
 
   auto vkPhysicalDevices = instance.vkInstance().enumeratePhysicalDevices();
   for (auto &vkPhysicalDevice : vkPhysicalDevices) {
     try {
-      return PhysicalDevice(std::move(vkPhysicalDevice), surface);
+      return PhysicalDevice(std::move(vkPhysicalDevice), surface,
+                            extraExtensions);
     } catch (const error::NoSuitableQueuesFound &e) {
       LOG(INFO) << e.what();  // Info because other device may succeed.
     }

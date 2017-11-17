@@ -55,9 +55,12 @@ void main() {
   color = pow(color / NumSamples, vec3(1.0f / 2.2f));
 
   // Adding old color.
-  vec3 oldColor = imageLoad(Image, pixelPos).xyz;
-  color = (oldColor * FrameCount * NumSamples + color * NumSamples) /
-          (FrameCount * NumSamples + NumSamples);
+  if (FrameCount > 0) {
+    /* const vec3 oldColor = imageLoad(Image, pixelPos).xyz; */
+    /* color = (oldColor * FrameCount * NumSamples + color * NumSamples) / */
+    /*         (FrameCount * NumSamples + NumSamples); */
+    /* color = oldColor; */
+  }
 
   color = clamp(color, 0.0f, 1.0f);
   imageStore(Image, pixelPos, vec4(color, 1.0f));

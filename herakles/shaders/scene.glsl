@@ -25,7 +25,7 @@
 #ifndef HERAKLES_SHADERS_SCENE_GLSL
 #define HERAKLES_SHADERS_SCENE_GLSL
 
-#extension GL_NV_shader_atomic_float : enable
+#include "extensions.glsl"
 
 // (u, v) = (s, t) for coordinates in Herakles.
 
@@ -213,7 +213,7 @@ struct SkipTriangle {
 
 layout(binding = 0, rgba32f) uniform restrict image2D Image;
 layout(binding = 1, rg32ui) uniform restrict uimage2D Seeds;
-layout(binding = 2, std140) uniform restrict readonly UBO {
+layout(binding = 2, std140) uniform UBO {
   PinholeCamera Camera;
   vec3 AmbientLight;
   bool HasAmbientLight;

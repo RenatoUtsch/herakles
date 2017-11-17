@@ -21,6 +21,7 @@ glsl_library(
     srcs = ["bdpt.glsl"],
     deps = [
         ":bsdf",
+        ":extensions",
         ":intersection",
         ":random",
         ":sampling",
@@ -33,6 +34,7 @@ glsl_library(
     name = "bsdf",
     srcs = ["bsdf.glsl"],
     deps = [
+        ":extensions",
         ":random",
         ":scene",
         ":utils",
@@ -40,9 +42,15 @@ glsl_library(
 )
 
 glsl_library(
+    name = "extensions",
+    srcs = ["extensions.glsl"],
+)
+
+glsl_library(
     name = "intersection",
     srcs = ["intersection.glsl"],
     deps = [
+        ":extensions",
         ":random",
         ":scene",
     ],
@@ -53,6 +61,7 @@ glsl_library(
     srcs = ["path_tracer.glsl"],
     deps = [
         ":bsdf",
+        ":extensions",
         ":intersection",
         ":random",
         ":sampling",
@@ -64,12 +73,16 @@ glsl_library(
 glsl_library(
     name = "random",
     srcs = ["random.glsl"],
+    deps = [
+        ":extensions",
+    ],
 )
 
 glsl_library(
     name = "sampling",
     srcs = ["sampling.glsl"],
     deps = [
+        ":extensions",
         ":intersection",
         ":random",
         ":scene",
@@ -80,9 +93,15 @@ glsl_library(
 glsl_library(
     name = "scene",
     srcs = ["scene.glsl"],
+    deps = [
+        ":extensions",
+    ],
 )
 
 glsl_library(
     name = "utils",
     srcs = ["utils.glsl"],
+    deps = [
+        ":extensions",
+    ],
 )

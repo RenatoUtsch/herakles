@@ -25,7 +25,7 @@
 #ifndef HERAKLES_SHADERS_RANDOM_GLSL
 #define HERAKLES_SHADERS_RANDOM_GLSL
 
-#extension GL_ARB_gpu_shader5 : require
+#include "extensions.glsl"
 
 /// Maximum number representable by an uint.
 const uint UINT_MAX = 4294967295U;

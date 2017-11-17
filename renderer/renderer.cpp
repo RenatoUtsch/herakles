@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -96,6 +97,13 @@ std::vector<uint8_t> readFile(const std::string &filename) {
   CHECK(file.read((char *)buffer.data(), size));
 
   return buffer;
+}
+
+vk::PhysicalDeviceFeatures getRequiredDeviceFeatures() {
+  vk::PhysicalDeviceFeatures deviceFeatures;
+  deviceFeatures.shaderStorageImageExtendedFormats = true;
+
+  return deviceFeatures;
 }
 
 class Renderer {
@@ -181,6 +189,22 @@ class Renderer {
     computeQueue.waitIdle();
   }
 
+  void ensureSwapchainImageInitialized_(size_t imageIndex) {
+    const auto &image = swapchain_.image(imageIndex);
+    if (!swapchainImageInitialized_[imageIndex]) {
+      swapchainImageInitialized_[imageIndex] = true;
+
+      device_.submitOneTimeComputeCommands(
+          [&image](const vk::CommandBuffer &commandBuffer) {
+            image.layoutTransitionBarrier(commandBuffer,
+                                          vk::ImageLayout::eUndefined,
+                                          vk::ImageLayout::ePresentSrcKHR, {},
+                                          vk::AccessFlagBits::eMemoryRead);
+          });
+      device_.vkComputeQueue().waitIdle();
+    }
+  }
+
   void drawFrame_() {
     const auto &computeQueue = device_.vkComputeQueue();
     const auto result =
@@ -195,6 +219,7 @@ class Renderer {
     }
 
     const auto &imageIndex = result.value;
+    ensureSwapchainImageInitialized_(imageIndex);
 
     computeQueue.submit(1, &swapchainSubmitInfos_[imageIndex], nullptr);
 
@@ -249,7 +274,9 @@ class Renderer {
       frameImage_.layoutTransitionBarrier(
           commandBuffer, vk::ImageLayout::eTransferSrcOptimal,
           vk::ImageLayout::eGeneral, vk::AccessFlagBits::eTransferRead,
-          vk::AccessFlagBits::eShaderWrite);
+          vk::AccessFlagBits::eShaderWrite,
+          vk::PipelineStageFlagBits::eTransfer,
+          vk::PipelineStageFlagBits::eComputeShader);
 
       commandBuffer.dispatch(ceil((float)swapchain_.width() / 32),
                              ceil((float)swapchain_.height() / 32), 1);
@@ -257,11 +284,16 @@ class Renderer {
       frameImage_.layoutTransitionBarrier(
           commandBuffer, vk::ImageLayout::eGeneral,
           vk::ImageLayout::eTransferSrcOptimal,
-          vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eTransferRead);
+          vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eTransferRead,
+          vk::PipelineStageFlagBits::eComputeShader,
+          vk::PipelineStageFlagBits::eTransfer);
 
-      image.layoutTransitionBarrier(commandBuffer, vk::ImageLayout::eUndefined,
+      image.layoutTransitionBarrier(commandBuffer,
+                                    vk::ImageLayout::ePresentSrcKHR,
                                     vk::ImageLayout::eTransferDstOptimal, {},
-                                    vk::AccessFlagBits::eTransferWrite);
+                                    vk::AccessFlagBits::eTransferWrite,
+                                    vk::PipelineStageFlagBits::eTopOfPipe,
+                                    vk::PipelineStageFlagBits::eTransfer);
 
       frameImage_.copyTo(commandBuffer, image,
                          vk::ImageLayout::eTransferSrcOptimal,
@@ -270,7 +302,8 @@ class Renderer {
       image.layoutTransitionBarrier(
           commandBuffer, vk::ImageLayout::eTransferDstOptimal,
           vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits::eTransferWrite,
-          vk::AccessFlagBits::eMemoryRead);
+          vk::AccessFlagBits::eMemoryRead, vk::PipelineStageFlagBits::eTransfer,
+          vk::PipelineStageFlagBits::eTopOfPipe);
 
       commandBuffer.end();
     }
@@ -295,17 +328,20 @@ class Renderer {
   }
 
   hk::Image createFrameImage_() {
-    auto image = hk::Image(
-        device_, swapchain_.width(), swapchain_.height(),
-        vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferSrc,
-        swapchain_.surfaceFormat().format);
+    auto image = hk::Image(device_, swapchain_.width(), swapchain_.height(),
+                           vk::ImageUsageFlagBits::eStorage |
+                               vk::ImageUsageFlagBits::eTransferSrc |
+                               vk::ImageUsageFlagBits::eTransferDst,
+                           swapchain_.surfaceFormat().format);
 
     device_.submitOneTimeComputeCommands(
         [&image](const vk::CommandBuffer &commandBuffer) {
           image.layoutTransitionBarrier(commandBuffer,
                                         vk::ImageLayout::eUndefined,
                                         vk::ImageLayout::eTransferSrcOptimal,
-                                        {}, vk::AccessFlagBits::eTransferRead);
+                                        {}, vk::AccessFlagBits::eTransferRead,
+                                        vk::PipelineStageFlagBits::eTopOfPipe,
+                                        vk::PipelineStageFlagBits::eTransfer);
         });
     device_.vkComputeQueue().waitIdle();
 
@@ -323,7 +359,9 @@ class Renderer {
         [&image](const vk::CommandBuffer &commandBuffer) {
           image.layoutTransitionBarrier(
               commandBuffer, vk::ImageLayout::eUndefined,
-              vk::ImageLayout::eGeneral, {}, vk::AccessFlagBits::eShaderRead);
+              vk::ImageLayout::eGeneral, {}, vk::AccessFlagBits::eShaderRead,
+              vk::PipelineStageFlagBits::eTopOfPipe,
+              vk::PipelineStageFlagBits::eComputeShader);
         });
     device_.vkComputeQueue().waitIdle();
 
@@ -331,9 +369,15 @@ class Renderer {
     return image;
   }
 
-  hk::Buffer createStorageBuffer_(vk::DeviceSize size) {
+  hk::Buffer createUniformBuffer_(vk::DeviceSize size) {
     return hk::Buffer(device_, size,
                       vk::BufferUsageFlagBits::eUniformBuffer |
+                          vk::BufferUsageFlagBits::eTransferDst);
+  }
+
+  hk::Buffer createStorageBuffer_(vk::DeviceSize size) {
+    return hk::Buffer(device_, std::max(size, 4ul),  // At least 4 bytes.
+                      vk::BufferUsageFlagBits::eStorageBuffer |
                           vk::BufferUsageFlagBits::eTransferDst);
   }
 
@@ -456,6 +500,10 @@ class Renderer {
 
   /// Initializes the GPU data that doesn't need a persistent staging buffer.
   void initializeGPUData_() {
+    /* hk::oneTimeSetup(frameImage_, [this](const hk::Buffer &stagingBuffer) {
+     */
+    /*   initializeFrames_(stagingBuffer); */
+    /* }); */
     hk::oneTimeSetup(seedImage_, [this](const hk::Buffer &stagingBuffer) {
       initializeSeeds_(stagingBuffer);
     });
@@ -463,11 +511,11 @@ class Renderer {
                  [&]() { return (void *)bvhData_.nodes.data(); });
     setupBuffer_(bvhTriangleBuffer_,
                  [&]() { return (void *)bvhData_.triangles.data(); });
-    if (areaLightBuffer_.requestedSize() > 0) {
+    if (scene_->areaLights()->size() > 0) {
       setupBuffer_(areaLightBuffer_,
                    [&]() { return (void *)scene_->areaLights()->Data(); });
     }
-    if (spotLightBuffer_.requestedSize() > 0) {
+    if (scene_->spotLights()->size() > 0) {
       setupBuffer_(spotLightBuffer_,
                    [&]() { return (void *)scene_->spotLights()->Data(); });
     }
@@ -479,11 +527,44 @@ class Renderer {
                  [&]() { return (void *)scene_->indices()->Data(); });
     setupBuffer_(vertexBuffer_,
                  [&]() { return (void *)scene_->vertices()->Data(); });
-    setupBuffer_(normalBuffer_,
-                 [&]() { return (void *)scene_->normals()->Data(); });
-    if (uvBuffer_.requestedSize() > 0) {
+    if (scene_->normals()->size() > 0) {
+      setupBuffer_(normalBuffer_,
+                   [&]() { return (void *)scene_->normals()->Data(); });
+    }
+    if (scene_->uvs()->size() > 0) {
       setupBuffer_(uvBuffer_, [&]() { return (void *)scene_->uvs()->Data(); });
     }
+  }
+
+  /// Initializes the frames used in rendering.
+  void initializeFrames_(const hk::Buffer &stagingBuffer) {
+    std::vector<glm::vec4> zeros(swapchain_.width() * swapchain_.height(),
+                                 glm::vec4(0.0f));
+
+    stagingBuffer.mapMemory([&zeros](void *data) {
+      memcpy(data, zeros.data(), sizeof(zeros[0]) * zeros.size());
+    });
+
+    device_.submitOneTimeComputeCommands(
+        [&](const vk::CommandBuffer &commandBuffer) {
+          frameImage_.layoutTransitionBarrier(
+              commandBuffer, vk::ImageLayout::eTransferSrcOptimal,
+              vk::ImageLayout::eTransferDstOptimal, {},
+              vk::AccessFlagBits::eTransferWrite,
+              vk::PipelineStageFlagBits::eTransfer,
+              vk::PipelineStageFlagBits::eTransfer);
+
+          stagingBuffer.copyTo(commandBuffer, frameImage_);
+
+          frameImage_.layoutTransitionBarrier(
+              commandBuffer, vk::ImageLayout::eTransferDstOptimal,
+              vk::ImageLayout::eTransferSrcOptimal,
+              vk::AccessFlagBits::eTransferWrite,
+              vk::AccessFlagBits::eTransferRead,
+              vk::PipelineStageFlagBits::eTransfer,
+              vk::PipelineStageFlagBits::eTransfer);
+        });
+    device_.vkComputeQueue().waitIdle();
   }
 
   /// Initializes the seeds used in rendering.
@@ -508,14 +589,18 @@ class Renderer {
           seedImage_.layoutTransitionBarrier(
               commandBuffer, vk::ImageLayout::eUndefined,
               vk::ImageLayout::eTransferDstOptimal, {},
-              vk::AccessFlagBits::eTransferWrite);
+              vk::AccessFlagBits::eTransferWrite,
+              vk::PipelineStageFlagBits::eTopOfPipe,
+              vk::PipelineStageFlagBits::eTransfer);
 
           stagingBuffer.copyTo(commandBuffer, seedImage_);
 
           seedImage_.layoutTransitionBarrier(
               commandBuffer, vk::ImageLayout::eTransferDstOptimal,
               vk::ImageLayout::eGeneral, vk::AccessFlagBits::eTransferWrite,
-              vk::AccessFlagBits::eShaderRead);
+              vk::AccessFlagBits::eShaderRead,
+              vk::PipelineStageFlagBits::eTransfer,
+              vk::PipelineStageFlagBits::eComputeShader);
         });
     device_.vkComputeQueue().waitIdle();
   }
@@ -527,9 +612,10 @@ class Renderer {
   hk::SurfaceProvider surfaceProvider_;
   hk::Instance instance_;
   hk::Surface surface_;
-  hk::PhysicalDevice physicalDevice_ =
-      hk::pickPhysicalDevice(instance_, surface_);
-  hk::Device device_ = hk::Device(instance_, physicalDevice_);
+  hk::PhysicalDevice physicalDevice_ = hk::pickPhysicalDevice(
+      instance_, surface_, {VK_NV_GLSL_SHADER_EXTENSION_NAME});
+  hk::Device device_ =
+      hk::Device(instance_, physicalDevice_, getRequiredDeviceFeatures());
   hk::Swapchain swapchain_ = hk::Swapchain(surface_, device_);
 
   hk::DescriptorSetLayout descriptorSetLayout_ = createDescriptorSetLayout_();
@@ -541,7 +627,7 @@ class Renderer {
   hk::Image seedImage_ = createSeedImage_();
 
   UniformBufferObject ubo_;
-  hk::Buffer uboBuffer_ = createStorageBuffer_(sizeof(ubo_));
+  hk::Buffer uboBuffer_ = createUniformBuffer_(sizeof(ubo_));
   hk::Buffer uboStagingBuffer_ = createStagingBuffer_(uboBuffer_);
   hk::Buffer bvhNodeBuffer_ = createStorageBuffer_(bvhData_.nodes);
   hk::Buffer bvhTriangleBuffer_ = createStorageBuffer_(bvhData_.triangles);
@@ -566,6 +652,8 @@ class Renderer {
       createSwapchainCommandBuffers_();
   std::vector<vk::SubmitInfo> swapchainSubmitInfos_ =
       createSwapchainSubmitInfos_();
+  std::vector<bool> swapchainImageInitialized_ =
+      std::vector<bool>(swapchainSubmitInfos_.size(), false);
 
   vk::UniqueSemaphore imageAvailableSemaphore_ = device_.createSemaphore();
   vk::UniqueSemaphore renderFinishedSemaphore_ = device_.createSemaphore();

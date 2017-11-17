@@ -21,6 +21,7 @@
 #ifndef HERAKLES_SHADERS_BSDF_GLSL
 #define HERAKLES_SHADERS_BSDF_GLSL
 
+#include "extensions.glsl"
 #include "random.glsl"
 #include "scene.glsl"
 #include "utils.glsl"

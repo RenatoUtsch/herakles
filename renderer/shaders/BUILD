@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_github_renatoutsch_rules_spirv//glsl:defs.bzl", "glsl_binary")
+load(
+    "@com_github_renatoutsch_rules_spirv//glsl:defs.bzl",
+    "glsl_binary",
+    "glsl_preprocessed_binary",
+)
 
 package(default_visibility = ["//visibility:public"])
 

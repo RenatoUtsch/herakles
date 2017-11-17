@@ -25,6 +25,7 @@
 #ifndef HERAKLES_SHADERS_BDPT_GLSL
 #define HERAKLES_SHADERS_BDPT_GLSL
 
+#include "extensions.glsl"
 #include "bsdf.glsl"
 #include "intersection.glsl"
 #include "random.glsl"

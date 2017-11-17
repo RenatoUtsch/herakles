@@ -67,6 +67,7 @@ cc_library(
         ":instance",
         ":surface",
         ":surface_provider",
+        ":utils",
         "//third_party:vulkan_hpp",
     ],
 )
@@ -79,7 +80,7 @@ cc_library(
     deps = [
         ":instance",
         ":physical_device",
-        ":utils",
+        "//third_party:glog",
         "//third_party:vulkan_hpp",
     ],
 )

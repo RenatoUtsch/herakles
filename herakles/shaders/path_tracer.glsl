@@ -21,6 +21,7 @@
 #ifndef HERAKLES_SHADERS_PATH_TRACER_GLSL
 #define HERAKLES_SHADERS_PATH_TRACER_GLSL
 
+#include "extensions.glsl"
 #include "bsdf.glsl"
 #include "intersection.glsl"
 #include "random.glsl"
@@ -63,6 +64,7 @@ vec3 pathTracingRadiance(Ray ray) {
                               perfectlySpecularBounce);
 
     // Update the reflectance.
+    // TODO(renatoutsch): maybe this should be after explicit light sampling.
     beta *= f * absDot(wi, isect.normal) / pdf;
 
     // Explicit light source sampling.

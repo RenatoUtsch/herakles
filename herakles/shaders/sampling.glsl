@@ -21,6 +21,7 @@
 #ifndef HERAKLES_SHADERS_SAMPLING_GLSL
 #define HERAKLES_SHADERS_SAMPLING_GLSL
 
+#include "extensions.glsl"
 #include "random.glsl"
 #include "scene.glsl"
 #include "intersection.glsl"
